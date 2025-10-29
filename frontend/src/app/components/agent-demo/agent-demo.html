@@ -1,0 +1,75 @@
+<div class="agent-demo-container">
+  <h1>React Agent Demo</h1>
+  
+  <div class="health-status">
+    <strong>Backend Status:</strong> 
+    <span [class.healthy]="healthStatus === 'healthy'" [class.unhealthy]="healthStatus !== 'healthy'">
+      {{ healthStatus || 'checking...' }}
+    </span>
+  </div>
+
+  <div class="section">
+    <h2>Available Tools</h2>
+    <div class="tools-list">
+      <div *ngFor="let tool of tools" class="tool-card">
+        <h3>{{ tool.name }}</h3>
+        <p>{{ tool.description }}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Run Agent Task</h2>
+    <div class="task-form">
+      <div class="form-group">
+        <label for="task">Task:</label>
+        <input 
+          id="task" 
+          type="text" 
+          [(ngModel)]="task" 
+          placeholder="Enter a task for the agent"
+          [disabled]="isLoading"
+        />
+      </div>
+      
+      <div class="form-group">
+        <label for="maxIterations">Max Iterations:</label>
+        <input 
+          id="maxIterations" 
+          type="number" 
+          [(ngModel)]="maxIterations" 
+          min="1" 
+          max="20"
+          [disabled]="isLoading"
+        />
+      </div>
+      
+      <button (click)="runTask()" [disabled]="isLoading || !task">
+        {{ isLoading ? 'Running...' : 'Run Task' }}
+      </button>
+    </div>
+
+    <div *ngIf="error" class="error">
+      {{ error }}
+    </div>
+
+    <div *ngIf="result" class="result">
+      <h3>Result</h3>
+      <div class="result-content">
+        <p><strong>Log:</strong> {{ result.log }}</p>
+        <p><strong>Output:</strong> {{ result.result.output }}</p>
+        <p><strong>Steps:</strong> {{ result.result.steps }}</p>
+        
+        <div *ngIf="result.steps && result.steps.length > 0">
+          <h4>Agent Steps:</h4>
+          <div *ngFor="let step of result.steps; let i = index" class="step">
+            <p><strong>Step {{ i + 1 }}:</strong></p>
+            <p><strong>Tool:</strong> {{ step.action.tool }}</p>
+            <p><strong>Observation:</strong> {{ step.observation }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

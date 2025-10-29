@@ -1,0 +1,65 @@
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+
+export interface ToolSchema {
+  name: string;
+  description: string;
+  parameters: any;
+}
+
+export interface AgentTask {
+  task: string;
+  context?: any;
+  max_iterations?: number;
+}
+
+export interface AgentResult {
+  result: any;
+  log: string;
+  steps: any[];
+}
+
+export interface ToolExecution {
+  tool_name: string;
+  parameters: any;
+}
+
+export interface ToolResult {
+  tool: string;
+  result: any;
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class Agent {
+  private apiUrl = 'http://localhost:8000';
+
+  constructor(private http: HttpClient) { }
+
+  getTools(): Observable<ToolSchema[]> {
+    return this.http.get<ToolSchema[]>(`${this.apiUrl}/tools`);
+  }
+
+  getToolSchema(toolName: string): Observable<ToolSchema> {
+    return this.http.get<ToolSchema>(`${this.apiUrl}/tools/${toolName}`);
+  }
+
+  runAgent(task: AgentTask): Observable<AgentResult> {
+    return this.http.post<AgentResult>(`${this.apiUrl}/run`, task);
+  }
+
+  executeTool(execution: ToolExecution): Observable<ToolResult> {
+    return this.http.post<ToolResult>(`${this.apiUrl}/execute`, execution);
+  }
+
+  discoverTools(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/discover`);
+  }
+
+  healthCheck(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/health`);
+  }
+}
+

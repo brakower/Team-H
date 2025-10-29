@@ -1,0 +1,25 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "Python backend with React Agent"
+authors = [
+    {name = "Team-H"}
+]
+readme = "README.md"
+requires-python = "^3.11"
+dependencies = [
+    "pydantic (>=2.12.3,<3.0.0)",
+    "fastapi (>=0.120.1,<0.121.0)",
+    "uvicorn (>=0.38.0,<0.39.0)",
+    "langchain (>=1.0.2,<2.0.0)",
+    "langchain-core (>=1.0.1,<2.0.0)",
+    "pytest (>=8.4.2,<9.0.0)",
+    "pytest-asyncio (>=1.2.0,<2.0.0)",
+    "black (>=25.9.0,<26.0.0)",
+    "pylint (>=4.0.2,<5.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

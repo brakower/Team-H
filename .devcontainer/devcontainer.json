@@ -1,0 +1,25 @@
+{
+  "name": "Team-H Development Container",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "angular.ng-template",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.linting.enabled": true,
+        "python.linting.pylintEnabled": true,
+        "python.formatting.provider": "black"
+      }
+    }
+  },
+  "forwardPorts": [4200, 8000],
+  "postCreateCommand": "cd /workspaces/Team-H/backend && poetry install && cd /workspaces/Team-H/frontend && npm install",
+  "remoteUser": "vscode"
+}
