@@ -12,7 +12,7 @@ from backend.tools import calculator, string_analyzer, list_processor, json_form
 app = FastAPI(
     title="React Agent API",
     description="API for interacting with the React Agent",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 # Configure CORS for frontend integration
@@ -33,12 +33,15 @@ tool_registry.register_tool(
     {
         "type": "object",
         "properties": {
-            "operation": {"type": "string", "enum": ["add", "subtract", "multiply", "divide"]},
+            "operation": {
+                "type": "string",
+                "enum": ["add", "subtract", "multiply", "divide"],
+            },
             "a": {"type": "number"},
-            "b": {"type": "number"}
+            "b": {"type": "number"},
         },
-        "required": ["operation", "a", "b"]
-    }
+        "required": ["operation", "a", "b"],
+    },
 )
 
 tool_registry.register_tool(
@@ -47,11 +50,9 @@ tool_registry.register_tool(
     "Analyze a string and return statistics",
     {
         "type": "object",
-        "properties": {
-            "text": {"type": "string"}
-        },
-        "required": ["text"]
-    }
+        "properties": {"text": {"type": "string"}},
+        "required": ["text"],
+    },
 )
 
 tool_registry.register_tool(
@@ -62,10 +63,13 @@ tool_registry.register_tool(
         "type": "object",
         "properties": {
             "items": {"type": "array", "items": {"type": "string"}},
-            "operation": {"type": "string", "enum": ["count", "sort", "reverse", "unique"]}
+            "operation": {
+                "type": "string",
+                "enum": ["count", "sort", "reverse", "unique"],
+            },
         },
-        "required": ["items", "operation"]
-    }
+        "required": ["items", "operation"],
+    },
 )
 
 tool_registry.register_tool(
@@ -76,10 +80,10 @@ tool_registry.register_tool(
         "type": "object",
         "properties": {
             "data": {"type": "object"},
-            "indent": {"type": "integer", "default": 2}
+            "indent": {"type": "integer", "default": 2},
         },
-        "required": ["data"]
-    }
+        "required": ["data"],
+    },
 )
 
 # Initialize agent
@@ -88,6 +92,7 @@ agent = ReactAgent(tool_registry, max_iterations=10)
 
 class TaskRequest(BaseModel):
     """Request model for running a task."""
+
     task: str
     context: Optional[Dict[str, Any]] = None
     max_iterations: Optional[int] = 10
@@ -95,6 +100,7 @@ class TaskRequest(BaseModel):
 
 class ToolExecutionRequest(BaseModel):
     """Request model for executing a specific tool."""
+
     tool_name: str
     parameters: Dict[str, Any]
 
@@ -105,11 +111,7 @@ async def root():
     return {
         "message": "React Agent API",
         "version": "1.0.0",
-        "endpoints": {
-            "tools": "/tools",
-            "run": "/run",
-            "execute": "/execute"
-        }
+        "endpoints": {"tools": "/tools", "run": "/run", "execute": "/execute"},
     }
 
 
@@ -141,7 +143,7 @@ async def run_agent(request: TaskRequest):
         # Create new agent with custom max_iterations if provided
         current_agent = ReactAgent(tool_registry, max_iterations=request.max_iterations)
         result = current_agent.run(request.task, request.context)
-        
+
         return {
             "result": result.return_values,
             "log": result.log,
@@ -150,12 +152,12 @@ async def run_agent(request: TaskRequest):
                     "action": {
                         "tool": step.action.tool,
                         "input": step.action.tool_input,
-                        "log": step.action.log
+                        "log": step.action.log,
                     },
-                    "observation": step.observation
+                    "observation": step.observation,
                 }
                 for step in current_agent.get_intermediate_steps()
-            ]
+            ],
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -166,14 +168,13 @@ async def execute_tool(request: ToolExecutionRequest):
     """Execute a specific tool directly."""
     tool = tool_registry.get_tool(request.tool_name)
     if tool is None:
-        raise HTTPException(status_code=404, detail=f"Tool '{request.tool_name}' not found")
-    
+        raise HTTPException(
+            status_code=404, detail=f"Tool '{request.tool_name}' not found"
+        )
+
     try:
         result = tool(**request.parameters)
-        return {
-            "tool": request.tool_name,
-            "result": result
-        }
+        return {"tool": request.tool_name, "result": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -186,4 +187,5 @@ async def discover_tools():
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

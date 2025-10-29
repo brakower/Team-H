@@ -1,0 +1,15 @@
+# Main dependencies for Team-H backend
+# Generated from pyproject.toml
+# Use Poetry for better dependency management: poetry install
+
+pydantic>=2.12.3
+fastapi>=0.120.1
+uvicorn>=0.38.0
+langchain>=1.0.2
+langchain-core>=1.0.1
+
+# Development dependencies
+pytest>=8.4.2
+pytest-asyncio>=1.2.0
+black>=25.9.0
+pylint>=4.0.2
