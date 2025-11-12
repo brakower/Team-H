@@ -8,7 +8,7 @@
   },
   "include": [
     "src/**/*.ts"
-  ],
+, "src/app/services/agents.service.specs", "src/app/services/agents.service.specs"  ],
   "exclude": [
     "src/**/*.spec.ts"
   ]
