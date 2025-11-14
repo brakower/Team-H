@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from typing import Dict, Any, Optional
 
 from backend.agent import ReactAgent, ToolRegistry, ToolSchema
-from backend.tools import calculator, string_analyzer, list_processor, json_formatter
+from backend.tools import calculator, string_analyzer, list_processor, json_formatter, grade_python_assignment
 
 
 app = FastAPI(
@@ -83,6 +83,24 @@ tool_registry.register_tool(
             "indent": {"type": "integer", "default": 2},
         },
         "required": ["data"],
+    },
+)
+
+tool_registry.register_tool(
+    "grade_python_assignment",
+    grade_python_assignment,
+    "Grade a Python coding assignment based on a rubric",
+    {
+        "type": "object",
+        "properties": {
+            "rubric_path": {"type": "string"},
+            "submission_path": {"type": "string"},
+            "test_cases_path": {
+                "type": "string",
+                "default": None,
+            },
+        },
+        "required": ["rubric_path", "submission_path"],
     },
 )
 

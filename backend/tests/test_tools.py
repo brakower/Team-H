@@ -1,7 +1,7 @@
 """Unit tests for example tools."""
 
 import pytest
-from backend.tools import calculator, string_analyzer, list_processor, json_formatter
+from backend.tools import calculator, string_analyzer, list_processor, json_formatter, grade_python_assignment
 
 
 class TestCalculator:

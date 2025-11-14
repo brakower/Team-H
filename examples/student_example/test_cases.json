@@ -1,0 +1,32 @@
+[
+  {
+    "function": "calculate_average",
+    "inputs": [[1, 2, 3, 4, 5]],
+    "expected": 3.0
+  },
+  {
+    "function": "find_max",
+    "inputs": [[1, 5, 3, 2]],
+    "expected": 5
+  },
+  {
+    "function": "find_min",
+    "inputs": [[1, 5, 3, 2]],
+    "expected": 1
+  },
+  {
+    "function": "calculate_median",
+    "inputs": [[1, 2, 3, 4, 5]],
+    "expected": 3
+  },
+  {
+    "function": "calculate_median",
+    "inputs": [[1, 2, 3, 4]],
+    "expected": 2.5
+  },
+  {
+    "function": "calculate_range",
+    "inputs": [[1, 5, 3, 2]],
+    "expected": 4
+  }
+]

@@ -1,5 +1,10 @@
 from typing import List, Type, TypeVar, Annotated
 import os
+import logging
+import traceback
+import re
+import json
+import uuid
 from fastapi import Depends
 from pydantic import BaseModel
 from backend.models.tool_schema import ToolSchema
@@ -57,6 +62,54 @@ class OpenAIService:
             return parsed
 
         except Exception as e:
-            import traceback
+            # Print traceback for immediate debugging (preserve previous behavior),
+            # then proceed with lightweight logging and best-effort extraction.
             traceback.print_exc()
-            raise
+
+            # Lightweight logging for debugging LLM parsing failures.
+            # Generate a short correlation id to find the log entry.
+            log_id = uuid.uuid4().hex[:8]
+            logger = logging.getLogger(__name__)
+
+            # Try to capture the raw content if available; fall back to empty string.
+            raw = None
+            try:
+                raw = completion.choices[0].message.content
+            except Exception:
+                raw = ""
+
+            # Sanitise and truncate the raw output for safe logging.
+            sanitized = (raw or "").replace("\n", " ").strip()
+            truncated = sanitized[:2000]
+
+            # First, try a best-effort extraction of JSON if the model returned extra text.
+            try:
+                # Remove common markdown fences
+                cleaned = re.sub(r"```(?:json)?", "", sanitized, flags=re.I).strip()
+                # Extract the first {...} block
+                m = re.search(r"(\{.*\})", cleaned, flags=re.S)
+                if m:
+                    try:
+                        obj = json.loads(m.group(1))
+                        parsed = response_model.model_validate(obj)
+                        # Log that we recovered a parse and return the parsed model
+                        logger.info("Recovered JSON from LLM output (log_id=%s)", log_id)
+                        return parsed
+                    except Exception:
+                        # fall through to logging below
+                        pass
+            except Exception:
+                # ignore best-effort extraction errors
+                pass
+
+            # Log warning with correlation id and truncated raw content for debugging.
+            logger.warning(
+                "LLM parse failed (log_id=%s). Raw output (truncated 1000 chars): %s",
+                log_id,
+                truncated,
+            )
+
+            # Raise a clearer error including the log id so it's easy to find the raw content.
+            raise RuntimeError(
+                f"Failed to parse LLM response into {response_model.__name__} (log_id={log_id})"
+            ) from e

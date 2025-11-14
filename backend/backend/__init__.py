@@ -1,7 +1,7 @@
 """Backend package initialization."""
 
 from backend.agent import ReactAgent, ToolRegistry
-from backend.tools import calculator, string_analyzer, list_processor, json_formatter
+from backend.tools import calculator, string_analyzer, list_processor, json_formatter, grade_python_assignment
 
 __all__ = [
     "ReactAgent",
@@ -10,4 +10,5 @@ __all__ = [
     "string_analyzer",
     "list_processor",
     "json_formatter",
+    "grade_python_assignment",
 ]
