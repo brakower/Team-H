@@ -1,45 +1,13 @@
 """React Agent implementation with main agent loop, tool discovery, and JSON Schema annotations."""
 
 from typing import List, Dict, Any, Optional, Callable
-from pydantic import BaseModel, Field
+from fastapi import Depends
+from backend.models.tool_schema import ToolSchema
+from backend.models.agent_action import AgentAction, AgentStep, AgentFinish
+from backend.services.openai import OpenAIService, openai_client
 import json
 import inspect
 from enum import Enum
-
-
-class ToolSchema(BaseModel):
-    """JSON Schema representation of a tool."""
-
-    name: str = Field(..., description="Name of the tool")
-    description: str = Field(..., description="Description of what the tool does")
-    parameters: Dict[str, Any] = Field(
-        default_factory=dict, description="JSON Schema for tool parameters"
-    )
-
-
-class AgentAction(BaseModel):
-    """Represents an action taken by the agent."""
-
-    tool: str = Field(..., description="Name of the tool to use")
-    tool_input: Dict[str, Any] = Field(..., description="Input parameters for the tool")
-    log: str = Field(default="", description="Log of the agent's reasoning")
-
-
-class AgentFinish(BaseModel):
-    """Represents the final result from the agent."""
-
-    return_values: Dict[str, Any] = Field(
-        ..., description="Return values from the agent"
-    )
-    log: str = Field(default="", description="Log of the agent's final reasoning")
-
-
-class AgentStep(BaseModel):
-    """Represents a single step in the agent execution."""
-
-    action: AgentAction = Field(..., description="The action taken")
-    observation: str = Field(..., description="Observation from executing the action")
-
 
 class ToolRegistry:
     """Registry for discovering and managing tools."""
@@ -175,9 +143,32 @@ class ReactAgent:
         """
         self.tool_registry = tool_registry
         self.max_iterations = max_iterations
-        self.intermediate_steps: List[AgentStep] = []
+        self.intermediate_steps: list[AgentStep] = []
 
-    def plan(self, task: str, context: Optional[Dict[str, Any]] = None) -> AgentAction:
+    def prompt_llm(self, prompt: str, available_tools: list[ToolSchema]):
+        openai_service = OpenAIService(client=openai_client())
+        tools_json = json.dumps([tool.model_dump() for tool in available_tools], indent=2)
+
+        system_prompt = (
+            f"You have access to the following tools:\n\n{tools_json}\n\n"
+            f"Your job is to select the best tool and provide its inputs based on the user prompt.\n"
+            f"Respond ONLY in valid JSON matching this schema:\n"
+            f"{AgentAction.model_json_schema()}"
+        )
+        user_prompt = f"Prompt: {prompt}"
+
+        result = openai_service.prompt(
+            available_tools=available_tools,
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            response_model=AgentAction,
+        )
+        return result
+    
+    def plan(self, 
+             task: str, 
+             context: Optional[Dict[str, Any]] = None,
+            ) -> AgentAction:
         """Plan the next action based on the task and context.
 
         Args:
@@ -187,21 +178,24 @@ class ReactAgent:
         Returns:
             The next action to take
         """
-        # Simple planning logic - in a real implementation, this would use an LLM
-        # For now, we'll return a dummy action
+        openai_service = OpenAIService(client=openai_client())
         available_tools = self.tool_registry.list_tools()
 
         if not available_tools:
             raise ValueError("No tools available")
 
-        # Use the first available tool as a simple strategy
-        first_tool = available_tools[0]
+        # Use the first available tool as a simple strategy (currently only add implemented)
+        # This would be where we call OpenAI 
 
-        return AgentAction(
-            tool=first_tool.name,
-            tool_input={},
-            log=f"Planning to use {first_tool.name} to accomplish: {task}",
+        action = self.prompt_llm(
+            prompt=task,
+            available_tools=available_tools,
         )
+        
+        if not isinstance(action, AgentAction):
+            raise ValueError("The LLM did not return a valid AgentAction.")
+
+        return action
 
     def execute(self, action: AgentAction) -> str:
         """Execute an action using the appropriate tool.

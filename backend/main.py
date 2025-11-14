@@ -3,7 +3,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional
 
 from backend.agent import ReactAgent, ToolRegistry, ToolSchema
 from backend.tools import calculator, string_analyzer, list_processor, json_formatter
@@ -121,7 +121,7 @@ async def health():
     return {"status": "healthy"}
 
 
-@app.get("/tools", response_model=List[ToolSchema])
+@app.get("/tools", response_model=list[ToolSchema])
 async def list_tools():
     """List all available tools."""
     return tool_registry.list_tools()
