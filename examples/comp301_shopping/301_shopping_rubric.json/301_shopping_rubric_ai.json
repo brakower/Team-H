@@ -1,0 +1,132 @@
+[
+  {
+    "file": "BackInStockEvent.java",
+    "criteria": "Implements StoreEvent and encapsulates immutable Product and Store fields",
+    "points_possible": 1
+  },
+  {
+    "file": "OutOfStockEvent.java",
+    "criteria": "Implements StoreEvent and encapsulates immutable Product and Store fields",
+    "points_possible": 1
+  },
+  {
+    "file": "PurchaseEvent.java",
+    "criteria": "Implements StoreEvent and encapsulates immutable Product and Store fields",
+    "points_possible": 1
+  },
+  {
+    "file": "SaleEndEvent.java",
+    "criteria": "Implements StoreEvent and encapsulates immutable Product and Store fields",
+    "points_possible": 1
+  },
+  {
+    "file": "SaleStartEvent.java",
+    "criteria": "Implements StoreEvent and encapsulates immutable Product and Store fields; correct constructor order",
+    "points_possible": 1
+  },
+
+  {
+    "file": "ProductImpl.java",
+    "criteria": "Constructor validates name and basePrice is not zero",
+    "points_possible": 0.5
+  },
+  {
+    "file": "ProductImpl.java",
+    "criteria": "getName() returns correct value",
+    "points_possible": 0.5
+  },
+  {
+    "file": "ProductImpl.java",
+    "criteria": "getBasePrice() returns correct value",
+    "points_possible": 0.5
+  },
+  {
+    "file": "ProductImpl.java",
+    "criteria": "Fields are private and class is immutable",
+    "points_possible": 0.5
+  },
+
+  {
+    "file": "StoreImpl.java",
+    "criteria": "Constructor initializes name, product storage, and observer list",
+    "points_possible": 0.5
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "Supports registering and removing observers",
+    "points_possible": 0.25
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "Stores and retrieves product inventory correctly",
+    "points_possible": 0.5
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "Stores and retrieves sale discount information correctly",
+    "points_possible": 0.5
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "startSale() applies discount and notifies observers",
+    "points_possible": 1
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "endSale() resets discount and notifies observers",
+    "points_possible": 1
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "restockProduct() increases inventory and notifies observers when appropriate",
+    "points_possible": 1
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "purchaseProduct() reduces inventory, generates ReceiptItemImpl, notifies observers",
+    "points_possible": 1.5
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "getSalePrice(), getIsOnSale(), getIsInStock(), getProductInventory() correctly handle invalid or null inputs",
+    "points_possible": 0.75
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "Fields are private and class encapsulates necessary state",
+    "points_possible": 0.5
+  },
+
+  {
+    "file": "CustomerImpl.java",
+    "criteria": "Constructor initializes name, budget, and purchase history",
+    "points_possible": 1
+  },
+  {
+    "file": "CustomerImpl.java",
+    "criteria": "purchaseProduct() stores ReceiptItem in purchase history and updates budget",
+    "points_possible": 1.5
+  },
+  {
+    "file": "CustomerImpl.java",
+    "criteria": "update() prints correct messages for all event types",
+    "points_possible": 2
+  },
+  {
+    "file": "CustomerImpl.java",
+    "criteria": "Fields are private and customer state updates correctly",
+    "points_possible": 0.5
+  },
+
+  {
+    "file": "Main.java",
+    "criteria": "Registers and deregisters observers correctly per TODO comments",
+    "points_possible": 1
+  },
+
+  {
+    "file": "All.java",
+    "criteria": "All submitted .java files conform to Google style guide",
+    "points_possible": 5
+  }
+]
