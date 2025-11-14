@@ -1,0 +1,222 @@
+[
+  {
+    "file": "ProductImpl.java",
+    "criteria": "Constructor Test",
+    "points_possible": 0.5
+  },
+  {
+    "file": "ProductImpl.java",
+    "criteria": "getName() Test",
+    "points_possible": 0.5
+  },
+  {
+    "file": "ProductImpl.java",
+    "criteria": "getBasePrice() Test",
+    "points_possible": 0.5
+  },
+  {
+    "file": "ProductImpl.java",
+    "criteria": "Fields are private",
+    "points_possible": 0.5
+  },
+
+  {
+    "file": "CustomerImpl.java",
+    "criteria": "Initial values of name, budget, and purchaseHistory",
+    "points_possible": 1
+  },
+  {
+    "file": "CustomerImpl.java",
+    "criteria": "Purchasing products",
+    "points_possible": 1
+  },
+  {
+    "file": "CustomerImpl.java",
+    "criteria": "Constructor parameter validation",
+    "points_possible": 1
+  },
+  {
+    "file": "CustomerImpl.java",
+    "criteria": "update() method",
+    "points_possible": 2
+  },
+  {
+    "file": "CustomerImpl.java",
+    "criteria": "Fields are private",
+    "points_possible": 1
+  },
+
+  {
+    "file": "SaleStartEvent.java",
+    "criteria": "SaleStartEvent tests",
+    "points_possible": 1
+  },
+  {
+    "file": "PurchaseEvent.java",
+    "criteria": "PurchaseEvent tests",
+    "points_possible": 1
+  },
+  {
+    "file": "SaleEndEvent.java",
+    "criteria": "SaleEndEvent tests",
+    "points_possible": 1
+  },
+  {
+    "file": "BackInStockEvent.java",
+    "criteria": "BackInStockEvent tests",
+    "points_possible": 1
+  },
+  {
+    "file": "OutOfStockEvent.java",
+    "criteria": "OutOfStockEvent tests",
+    "points_possible": 1
+  },
+
+  {
+    "file": "StoreImpl.java",
+    "criteria": "restockProduct invalid parameter",
+    "points_possible": 0.0625
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "endSale invalid parameter",
+    "points_possible": 0.0625
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "endSale product not sold",
+    "points_possible": 0.0625
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "startSale invalid parameter",
+    "points_possible": 0.0625
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "restockProduct product not sold",
+    "points_possible": 0.0625
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "getSalePrice parameter null",
+    "points_possible": 0.0625
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "getProductInventory parameter null",
+    "points_possible": 0.0625
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "getSalePrice product not sold",
+    "points_possible": 0.0625
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "purchaseProduct parameter null",
+    "points_possible": 0.0625
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "getIsOnSale parameter null",
+    "points_possible": 0.0625
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "purchaseProduct product not sold",
+    "points_possible": 0.0625
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "getIsInStock parameter null",
+    "points_possible": 0.0625
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "addObserver parameter null",
+    "points_possible": 0.0625
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "createProduct parameter validation",
+    "points_possible": 0.0625
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "getIsInStock product not sold",
+    "points_possible": 0.0625
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "getProductInventory product not sold",
+    "points_possible": 0.0625
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "getIsOnSale product not sold",
+    "points_possible": 0.0625
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "startSale product not sold",
+    "points_possible": 0.0625
+  },
+
+  {
+    "file": "StoreImpl.java",
+    "criteria": "Constructor tests",
+    "points_possible": 0.25
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "restockProduct() method with observer",
+    "points_possible": 0.5
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "purchaseProduct() method with observer",
+    "points_possible": 0.5
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "Basic purchaseProduct() method with items not on sale",
+    "points_possible": 0.5
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "getIsInStock() method",
+    "points_possible": 0.125
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "Multiple observers",
+    "points_possible": 0.5
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "Fields are private",
+    "points_possible": 0.25
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "getProducts() and createProduct() methods",
+    "points_possible": 0.25
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "purchaseProduct() method with items on sale",
+    "points_possible": 0.5
+  },
+  {
+    "file": "StoreImpl.java",
+    "criteria": "startSale() and endSale() methods with observers",
+    "points_possible": 0.5
+  },
+
+  {
+    "file": "All.java",
+    "criteria": "Submitted .java files must conform to Google style guide",
+    "points_possible": 5
+  }
+]
