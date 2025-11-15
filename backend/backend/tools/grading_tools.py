@@ -30,7 +30,16 @@ def load_submission(submission_path: str) -> str:
     ## TEMP: Submission path is currently hard coded, this should be changed
     submission_path = '/workspaces/Team-H/examples/student_example/student_submission.py'
     with open(submission_path, "r") as f:
-        return f.read()
+        student_code = f.read()
+    
+    # account for multi-line comments throwing python syntax errors 
+    stripped = student_code.lstrip()
+
+    if not (stripped.startswith("#") or stripped.startswith('"""') or stripped.startswith("'''")):
+        # If it doesn’t start with a valid Python comment/docstring, wrap it
+        student_code = f'"""\n{student_code}\n"""\n'
+
+    return student_code
 
 
 def load_test_cases(test_cases_path: str) -> Optional[List[Dict[str, Any]]]:

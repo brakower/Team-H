@@ -152,25 +152,82 @@ class ReactAgent:
             [f"Step {i + 1}: Tool={step.action.tool}, Observation={step.observation}" for i, step in enumerate(history)]
         )
         system_prompt = (
-            f"Previous tool calls and observations: {history_text}"
+            f"Previous tool calls and observations:\n{history_text}\n\n"
             f"You have access to the following tools:\n\n{tools_json}\n\n"
-            f"Based on the above, determine the NEXT best tool to call. Do NOT repeat the same tool unless necessary."
-            f"Only call tools that logically follow from the previous steps. Make sure if you are grading, run all checks before compute score"
-            f"Respond ONLY with a JSON OBJECT that INSTANTIATES the following schema "
-            f"(do NOT return the schema itself):\n\n"
+
+            # ------------------------------------------------------------
+            # STRICT STEP ORDER FOR GRADING
+            # ------------------------------------------------------------
+            f"When grading Python code, you MUST call tools in the EXACT following order:\n"
+            f"1. load_rubric\n"
+            f"2. load_submission\n"
+            f"3. check_syntax\n"
+            f"4. check_required_elements\n"
+            f"5. check_documentation_tools\n"
+            f"6. check_style_tools\n"
+            f"7. load_test_cases\n"
+            f"8. run_functional_tests OR run_pytest_on_directory\n"
+            f"9. compute_final_grade\n\n"
+
+            # ------------------------------------------------------------
+            # HISTORY AWARENESS AND NON-REPETITION
+            # ------------------------------------------------------------
+            f"You MUST use the previous tool calls listed above to decide your NEXT action.\n"
+            f"NEVER call a tool again if it already appears in the history.\n\n"
+
+            f"If load_rubric already appears in the history, DO NOT call it again.\n"
+            f"If load_submission already appears in the history, DO NOT call it again.\n"
+            f"If check_syntax already appears in the history, DO NOT call it again.\n"
+            f"If check_required_elements already appears in the history, DO NOT call it again.\n"
+            f"If check_documentation_tools already appears in the history, DO NOT call it again.\n"
+            f"If check_style_tools already appears in the history, DO NOT call it again.\n"
+            f"If load_test_cases already appears in the history, DO NOT call it again.\n"
+            f"If functional tests have already been run, DO NOT run them again.\n"
+            f"Only call compute_final_grade when ALL steps above exist in the history.\n"
+            f"After compute_final_grade, STOP making tool calls.\n\n"
+
+            # ------------------------------------------------------------
+            # CRITICAL: CODE PASSING RULES
+            # ------------------------------------------------------------
+            f"When you pass code to ANY tool (check_syntax, check_required_elements, "
+            f"check_documentation_tools, check_style_tools, run_functional_tests), "
+            f"you MUST use EXACTLY the code string returned by load_submission.\n"
+            f"- DO NOT modify, shorten, reformat, or alter the code in ANY way.\n"
+            f"- DO NOT remove docstrings or comments.\n"
+            f"- DO NOT change indentation.\n"
+            f"- DO NOT strip header text.\n"
+            f"- Copy the string EXACTLY as it appeared in the load_submission observation.\n\n"
+
+            # ------------------------------------------------------------
+            # TOOL PARAMETER STRICTNESS
+            # ------------------------------------------------------------
+            f"Each tool has a strict parameter schema. You MUST:\n"
+            f"- Use ONLY the parameters defined in the tool's schema.\n"
+            f"- NEVER invent new parameters.\n"
+            f"- NEVER reuse parameters from other tools.\n"
+            f"- NEVER modify parameter names.\n\n"
+
+            # ------------------------------------------------------------
+            # RESPONSE FORMAT
+            # ------------------------------------------------------------
+            f"Respond ONLY with a JSON OBJECT that INSTANTIATES the following schema:\n"
             f"{AgentAction.model_json_schema()}\n\n"
+
             f"Important rules:\n"
             f"- DO NOT return the schema.\n"
             f"- DO NOT describe the schema.\n"
-            f"- DO NOT wrap the result in any extra text.\n"
-            f"- DO NOT include explanations.\n"
-            f"- ONLY return a JSON object that matches the schema.\n\n"
-            f"Example of the correct response format (do NOT copy these values):\n"
+            f"- DO NOT explain your thinking.\n"
+            f"- DO NOT wrap the result in code blocks.\n"
+            f"- DO NOT include commentary.\n"
+            f"- ONLY return a JSON object matching the schema.\n\n"
+
+            f"Example format (do NOT copy these values):\n"
             f"{{\n"
             f"  \"tool\": \"some_tool_name\",\n"
             f"  \"tool_input\": {{ \"param\": \"value\" }}\n"
             f"}}"
         )
+
 
         user_prompt = f"Prompt: {prompt}"
 
