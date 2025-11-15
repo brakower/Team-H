@@ -118,6 +118,15 @@ if __name__ == "__main__":
     print(f"Median: {calculate_median(test_data)}")
     print(f"Range: {calculate_range(test_data)}")
 
+# Correct version for testing autograder
+# def count_occurrences(lst, value):
+#     """
+#     Return how many times 'value' appears in the list.
+#     Raise ValueError if the list is empty.
+#     """
+#     if not lst:
+#         raise ValueError("List is empty")
+#     return lst.count(value)
 
 def count_occurrences(lst, value):
     # BUGGY VERSION for testing autograder
