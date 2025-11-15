@@ -6,7 +6,8 @@ from pydantic import BaseModel
 from typing import Dict, Any, Optional
 
 from backend.agent import ReactAgent, ToolRegistry, ToolSchema
-from backend.tools import calculator, string_analyzer, list_processor, json_formatter, grade_python_assignment
+from backend.tools import calculator, string_analyzer, list_processor, json_formatter, grade_python_assignment, run_pytest_on_directory
+
 
 
 app = FastAPI(
@@ -102,6 +103,19 @@ tool_registry.register_tool(
         },
         "required": ["rubric_path", "submission_path"],
     },
+)
+
+tool_registry.register_tool(
+    "run_pytest_on_directory",
+    run_pytest_on_directory,
+    "Run pytest inside a student submission directory and return structured results",
+    {
+        "type": "object",
+        "properties": {
+            "directory_path": {"type": "string"}
+        },
+        "required": ["directory_path"]
+    }
 )
 
 # Initialize agent

@@ -117,3 +117,11 @@ if __name__ == "__main__":
     print(f"Min: {find_min(test_data)}")
     print(f"Median: {calculate_median(test_data)}")
     print(f"Range: {calculate_range(test_data)}")
+
+
+def count_occurrences(lst, value):
+    # BUGGY VERSION for testing autograder
+    # Returns the length of the list instead of counting occurrences 🤦
+    if not lst:
+        return 0   # Also wrong: should raise ValueError
+    return len(lst)

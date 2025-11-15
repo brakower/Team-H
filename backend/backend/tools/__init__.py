@@ -6,6 +6,7 @@ from backend.tools.example_tools import (
     list_processor,
     json_formatter,
     grade_python_assignment,
+    run_pytest_on_directory
 )
 
 __all__ = [
@@ -14,4 +15,5 @@ __all__ = [
     "list_processor",
     "json_formatter",
     "grade_python_assignment",
+    "run_pytest_on_directory"
 ]
