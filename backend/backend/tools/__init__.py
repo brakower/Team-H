@@ -5,6 +5,7 @@ from backend.tools.example_tools import (
     string_analyzer,
     list_processor,
     json_formatter,
+    grade_python_assignment,
 )
 
 __all__ = [
@@ -12,4 +13,5 @@ __all__ = [
     "string_analyzer",
     "list_processor",
     "json_formatter",
+    "grade_python_assignment",
 ]

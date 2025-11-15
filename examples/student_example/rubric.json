@@ -1,0 +1,29 @@
+{
+  "syntax": {
+    "points": 10,
+    "description": "Code has valid Python syntax"
+  },
+  "required_elements": {
+    "points": 25,
+    "items": [
+      "calculate_average",
+      "find_max",
+      "find_min",
+      "calculate_median",
+      "calculate_range"
+    ],
+    "description": "All required functions are implemented"
+  },
+  "documentation": {
+    "points": 20,
+    "description": "Functions have docstrings and code has comments"
+  },
+  "functionality": {
+    "points": 35,
+    "description": "Functions produce correct outputs"
+  },
+  "style": {
+    "points": 10,
+    "description": "Code follows Python style conventions"
+  }
+}

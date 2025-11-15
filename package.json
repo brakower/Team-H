@@ -2,5 +2,8 @@
   "devDependencies": {
     "@types/jasmine": "^5.1.12",
     "concurrently": "^9.2.1"
+  },
+  "dependencies": {
+    "openai": "^6.9.0"
   }
 }
