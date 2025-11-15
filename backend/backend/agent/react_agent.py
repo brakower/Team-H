@@ -202,6 +202,7 @@ class ReactAgent:
             # TOOL PARAMETER STRICTNESS
             # ------------------------------------------------------------
             f"Each tool has a strict parameter schema. You MUST:\n"
+            f"- NEVER use rubric values such as \"points\" or \"description\" as tool inputs."
             f"- Use ONLY the parameters defined in the tool's schema.\n"
             f"- NEVER invent new parameters.\n"
             f"- NEVER reuse parameters from other tools.\n"
