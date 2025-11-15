@@ -144,13 +144,18 @@ class ReactAgent:
         self.max_iterations = max_iterations
         self.intermediate_steps: list[AgentStep] = []
 
-    def prompt_llm(self, prompt: str, available_tools: list[ToolSchema]):
+    def prompt_llm(self, prompt: str, available_tools: list[ToolSchema], history: list[AgentStep]):
         openai_service = OpenAIService(client=openai_client())
         tools_json = json.dumps([tool.model_dump() for tool in available_tools], indent=2)
 
+        history_text = "\n".join(
+            [f"Step {i + 1}: Tool={step.action.tool}, Observation={step.observation}" for i, step in enumerate(history)]
+        )
         system_prompt = (
+            f"Previous tool calls and observations: {history_text}"
             f"You have access to the following tools:\n\n{tools_json}\n\n"
-            f"Your job is to select the best tool and provide its inputs based on the user prompt.\n\n"
+            f"Based on the above, determine the NEXT best tool to call. Do NOT repeat the same tool unless necessary."
+            f"Only call tools that logically follow from the previous steps. Make sure if you are grading, run all checks before compute score"
             f"Respond ONLY with a JSON OBJECT that INSTANTIATES the following schema "
             f"(do NOT return the schema itself):\n\n"
             f"{AgentAction.model_json_schema()}\n\n"
@@ -180,6 +185,7 @@ class ReactAgent:
     def plan(self, 
              task: str, 
              context: Optional[Dict[str, Any]] = None,
+             history: list[AgentStep] = None
             ) -> AgentAction:
         """Plan the next action based on the task and context.
 
@@ -202,6 +208,7 @@ class ReactAgent:
         action = self.prompt_llm(
             prompt=task,
             available_tools=available_tools,
+            history=history or []
         )
         
         if not isinstance(action, AgentAction):
@@ -239,12 +246,28 @@ class ReactAgent:
         Returns:
             True if should continue, False otherwise
         """
-        # Stop if max iterations reached
+        # 1. Stop if max iterations reached
         if iteration >= self.max_iterations:
             return False
 
-        # Stop if observation indicates completion
+        # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+        # COMPLETION LOGIC 
+        # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+        # 2. Stop if final grade was already computed
+        if "total_score" in observation.lower() or "final_grade" in observation.lower():
+            return False
+
+        # 3. Stop if observation contains a full rubric breakdown
+        if "breakdown" in observation.lower() and "percentage" in observation.lower():
+            return False
+
+        # 5. Original keywords logic
         if "complete" in observation.lower() or "finished" in observation.lower():
+            return False
+        
+        #6. Early exit with errors
+        if "Error executing tool" in observation:
             return False
 
         return True
@@ -264,7 +287,7 @@ class ReactAgent:
 
         while iteration < self.max_iterations:
             # Step 1: Plan the next action
-            action = self.plan(task, context)
+            action = self.plan(task, context, history=self.intermediate_steps)
             print(f"ACTION: {action}")
 
             # Step 2: Execute the action
