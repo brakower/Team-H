@@ -108,17 +108,17 @@ def calculate_range(numbers):
     return max(numbers) - min(numbers)
 
 
-# Helper function for testing
-if __name__ == "__main__":
-    # Sample test data
-    test_data = [10, 5, 8, 12, 3, 7]
+# # Helper function for testing
+# if __name__ == "__main__":
+#     # Sample test data
+#     test_data = [10, 5, 8, 12, 3, 7]
     
-    print("Test Data:", test_data)
-    print(f"Average: {calculate_average(test_data)}")
-    print(f"Max: {find_max(test_data)}")
-    print(f"Min: {find_min(test_data)}")
-    print(f"Median: {calculate_median(test_data)}")
-    print(f"Range: {calculate_range(test_data)}")
+#     print("Test Data:", test_data)
+#     print(f"Average: {calculate_average(test_data)}")
+#     print(f"Max: {find_max(test_data)}")
+#     print(f"Min: {find_min(test_data)}")
+#     print(f"Median: {calculate_median(test_data)}")
+#     print(f"Range: {calculate_range(test_data)}")
 
 # Correct version for testing autograder
 # def count_occurrences(lst, value):

@@ -229,7 +229,6 @@ class ReactAgent:
             f"}}"
         )
 
-
         user_prompt = f"Prompt: {prompt}"
 
         result = openai_service.prompt(
@@ -290,6 +289,14 @@ class ReactAgent:
 
         try:
             result = tool(**action.tool_input)
+            # If the tool returned a dict or list (structured data), return valid JSON
+            # so downstream consumers (frontend/parsers) can reliably parse it.
+            if isinstance(result, (dict, list)):
+                try:
+                    return json.dumps(result)
+                except TypeError:
+                    # Fallback: stringify non-serializable parts
+                    return json.dumps(result, default=str)
             return str(result)
         except Exception as e:
             return f"Error executing tool: {str(e)}"

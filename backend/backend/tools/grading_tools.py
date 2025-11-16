@@ -243,8 +243,31 @@ def compute_final_grade(
         }
         results["total_score"] += earned
 
-    # FINAL PERCENTAGE
+    # Recalculate total score from the breakdown to avoid double-counting and keep a single source of truth
+    results["total_score"] = 0
+    for category in results["breakdown"].values():
+        results["total_score"] += category["earned"]
+
+    # Round scores
+    results["total_score"] = round(results["total_score"], 2)
+    for category in results["breakdown"].values():
+        category["earned"] = round(category["earned"], 2)
+
+    # Generate overall feedback
+    percentage = (results["total_score"] / results["max_score"] * 100) if results["max_score"] > 0 else 0
+    results["percentage"] = round(percentage, 1)
+
+    # Human-friendly summary for frontend display
+    title = rubric.get("title") or rubric.get("name") or "Assignment"
     if results["max_score"] > 0:
-        results["percentage"] = round((results["total_score"] / results["max_score"]) * 100, 2)
+        summary = f"{title}: {results['total_score']} / {round(results['max_score'],2)} pts ({results['percentage']}%)"
+    else:
+        summary = f"{title}: No graded items"
+
+    # If functionality existed in the rubric but there were no test cases, add a short note
+    if "functionality" in rubric and tests.get("total", 0) == 0:
+        summary += " — Functionality tests were skipped (no test cases provided)."
+
+    results["summary"] = summary
 
     return results
