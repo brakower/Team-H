@@ -6,22 +6,22 @@ Date: November 13, 2025
 This module contains functions for basic data analysis operations.
 """
 
-def calculate_average(numbers):
-    """Calculate the average of a list of numbers.
+# def calculate_average(numbers):
+#     """Calculate the average of a list of numbers.
     
-    Args:
-        numbers: A list of numeric values
+#     Args:
+#         numbers: A list of numeric values
         
-    Returns:
-        float: The arithmetic mean of the input numbers
+#     Returns:
+#         float: The arithmetic mean of the input numbers
         
-    Raises:
-        ValueError: If the list is empty
-    """
-    if not numbers:
-        raise ValueError("Cannot calculate average of empty list")
+#     Raises:
+#         ValueError: If the list is empty
+#     """
+#     if not numbers:
+#         raise ValueError("Cannot calculate average of empty list")
     
-    return sum(numbers) / len(numbers)
+#     return sum(numbers) / len(numbers)
 
 
 def find_max(numbers):
