@@ -7,7 +7,6 @@ from backend.models.agent_action import AgentAction, AgentStep, AgentFinish
 from backend.services.openai import OpenAIService, openai_client
 import json
 import inspect
-from enum import Enum
 
 class ToolRegistry:
     """Registry for discovering and managing tools."""
@@ -151,10 +150,23 @@ class ReactAgent:
 
         system_prompt = (
             f"You have access to the following tools:\n\n{tools_json}\n\n"
-            f"Your job is to select the best tool and provide its inputs based on the user prompt.\n"
-            f"Respond ONLY in valid JSON matching this schema:\n"
-            f"{AgentAction.model_json_schema()}"
+            f"Your job is to select the best tool and provide its inputs based on the user prompt.\n\n"
+            f"Respond ONLY with a JSON OBJECT that INSTANTIATES the following schema "
+            f"(do NOT return the schema itself):\n\n"
+            f"{AgentAction.model_json_schema()}\n\n"
+            f"Important rules:\n"
+            f"- DO NOT return the schema.\n"
+            f"- DO NOT describe the schema.\n"
+            f"- DO NOT wrap the result in any extra text.\n"
+            f"- DO NOT include explanations.\n"
+            f"- ONLY return a JSON object that matches the schema.\n\n"
+            f"Example of the correct response format (do NOT copy these values):\n"
+            f"{{\n"
+            f"  \"tool\": \"some_tool_name\",\n"
+            f"  \"tool_input\": {{ \"param\": \"value\" }}\n"
+            f"}}"
         )
+
         user_prompt = f"Prompt: {prompt}"
 
         result = openai_service.prompt(
@@ -253,10 +265,12 @@ class ReactAgent:
         while iteration < self.max_iterations:
             # Step 1: Plan the next action
             action = self.plan(task, context)
+            print(f"ACTION: {action}")
 
             # Step 2: Execute the action
             observation = self.execute(action)
-
+            print(f"OBS: {observation}")
+            
             # Step 3: Record the step
             step = AgentStep(action=action, observation=observation)
             self.intermediate_steps.append(step)
