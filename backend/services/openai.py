@@ -34,7 +34,7 @@ def openai_client():
 
 
 class OpenAIService:
-    _model: str = os.getenv("UNC_OPENAI_MODEL", "gpt-4o-mini")
+    _model: str = os.getenv("UNC_OPENAI_MODEL", "gpt-5")
 
     def __init__(self, client: Annotated[AzureOpenAI, Depends(openai_client)]):
         self._client = client
