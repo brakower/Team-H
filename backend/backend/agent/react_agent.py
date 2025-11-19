@@ -144,23 +144,85 @@ class ReactAgent:
         self.max_iterations = max_iterations
         self.intermediate_steps: list[AgentStep] = []
 
-    def prompt_llm(self, prompt: str, available_tools: list[ToolSchema]):
+    def prompt_llm(self, prompt: str, available_tools: list[ToolSchema], history: list[AgentStep]):
         openai_service = OpenAIService(client=openai_client())
         tools_json = json.dumps([tool.model_dump() for tool in available_tools], indent=2)
 
+        history_text = "\n".join(
+            [f"Step {i + 1}: Tool={step.action.tool}, Observation={step.observation}" for i, step in enumerate(history)]
+        )
         system_prompt = (
+            f"Previous tool calls and observations:\n{history_text}\n\n"
             f"You have access to the following tools:\n\n{tools_json}\n\n"
-            f"Your job is to select the best tool and provide its inputs based on the user prompt.\n\n"
-            f"Respond ONLY with a JSON OBJECT that INSTANTIATES the following schema "
-            f"(do NOT return the schema itself):\n\n"
+
+            # ------------------------------------------------------------
+            # STRICT STEP ORDER FOR GRADING
+            # ------------------------------------------------------------
+            f"When grading Python code, you MUST call tools in the EXACT following order:\n"
+            f"1. load_rubric\n"
+            f"2. load_submission\n"
+            f"3. check_syntax\n"
+            f"4. check_required_elements\n"
+            f"5. check_documentation_tools\n"
+            f"6. check_style_tools\n"
+            f"7. load_test_cases\n"
+            f"8. run_functional_tests OR run_pytest_on_directory\n"
+            f"9. compute_final_grade\n\n"
+
+            # ------------------------------------------------------------
+            # HISTORY AWARENESS AND NON-REPETITION
+            # ------------------------------------------------------------
+            f"You MUST use the previous tool calls listed above to decide your NEXT action.\n"
+            f"NEVER call a tool again if it already appears in the history.\n\n"
+
+            f"If load_rubric already appears in the history, DO NOT call it again.\n"
+            f"If load_submission already appears in the history, DO NOT call it again.\n"
+            f"If check_syntax already appears in the history, DO NOT call it again.\n"
+            f"If check_required_elements already appears in the history, DO NOT call it again.\n"
+            f"If check_documentation_tools already appears in the history, DO NOT call it again.\n"
+            f"If check_style_tools already appears in the history, DO NOT call it again.\n"
+            f"If load_test_cases already appears in the history, DO NOT call it again.\n"
+            f"If functional tests have already been run, DO NOT run them again.\n"
+            f"Only call compute_final_grade when ALL steps above exist in the history.\n"
+            f"After compute_final_grade, STOP making tool calls.\n\n"
+
+            # ------------------------------------------------------------
+            # CRITICAL: CODE PASSING RULES
+            # ------------------------------------------------------------
+            f"When you pass code to ANY tool (check_syntax, check_required_elements, "
+            f"check_documentation_tools, check_style_tools, run_functional_tests), "
+            f"you MUST use EXACTLY the code string returned by load_submission.\n"
+            f"- DO NOT modify, shorten, reformat, or alter the code in ANY way.\n"
+            f"- DO NOT remove docstrings or comments.\n"
+            f"- DO NOT change indentation.\n"
+            f"- DO NOT strip header text.\n"
+            f"- Copy the string EXACTLY as it appeared in the load_submission observation.\n\n"
+
+            # ------------------------------------------------------------
+            # TOOL PARAMETER STRICTNESS
+            # ------------------------------------------------------------
+            f"Each tool has a strict parameter schema. You MUST:\n"
+            f"- NEVER use rubric values such as \"points\" or \"description\" as tool inputs."
+            f"- Use ONLY the parameters defined in the tool's schema.\n"
+            f"- NEVER invent new parameters.\n"
+            f"- NEVER reuse parameters from other tools.\n"
+            f"- NEVER modify parameter names.\n\n"
+
+            # ------------------------------------------------------------
+            # RESPONSE FORMAT
+            # ------------------------------------------------------------
+            f"Respond ONLY with a JSON OBJECT that INSTANTIATES the following schema:\n"
             f"{AgentAction.model_json_schema()}\n\n"
+
             f"Important rules:\n"
             f"- DO NOT return the schema.\n"
             f"- DO NOT describe the schema.\n"
-            f"- DO NOT wrap the result in any extra text.\n"
-            f"- DO NOT include explanations.\n"
-            f"- ONLY return a JSON object that matches the schema.\n\n"
-            f"Example of the correct response format (do NOT copy these values):\n"
+            f"- DO NOT explain your thinking.\n"
+            f"- DO NOT wrap the result in code blocks.\n"
+            f"- DO NOT include commentary.\n"
+            f"- ONLY return a JSON object matching the schema.\n\n"
+
+            f"Example format (do NOT copy these values):\n"
             f"{{\n"
             f"  \"tool\": \"some_tool_name\",\n"
             f"  \"tool_input\": {{ \"param\": \"value\" }}\n"
@@ -180,6 +242,7 @@ class ReactAgent:
     def plan(self, 
              task: str, 
              context: Optional[Dict[str, Any]] = None,
+             history: list[AgentStep] = None
             ) -> AgentAction:
         """Plan the next action based on the task and context.
 
@@ -202,6 +265,7 @@ class ReactAgent:
         action = self.prompt_llm(
             prompt=task,
             available_tools=available_tools,
+            history=history or []
         )
         
         if not isinstance(action, AgentAction):
@@ -225,6 +289,14 @@ class ReactAgent:
 
         try:
             result = tool(**action.tool_input)
+            # If the tool returned a dict or list (structured data), return valid JSON
+            # so downstream consumers (frontend/parsers) can reliably parse it.
+            if isinstance(result, (dict, list)):
+                try:
+                    return json.dumps(result)
+                except TypeError:
+                    # Fallback: stringify non-serializable parts
+                    return json.dumps(result, default=str)
             return str(result)
         except Exception as e:
             return f"Error executing tool: {str(e)}"
@@ -239,12 +311,28 @@ class ReactAgent:
         Returns:
             True if should continue, False otherwise
         """
-        # Stop if max iterations reached
+        # 1. Stop if max iterations reached
         if iteration >= self.max_iterations:
             return False
 
-        # Stop if observation indicates completion
+        # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+        # COMPLETION LOGIC 
+        # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+        # 2. Stop if final grade was already computed
+        if "total_score" in observation.lower() or "final_grade" in observation.lower():
+            return False
+
+        # 3. Stop if observation contains a full rubric breakdown
+        if "breakdown" in observation.lower() and "percentage" in observation.lower():
+            return False
+
+        # 5. Original keywords logic
         if "complete" in observation.lower() or "finished" in observation.lower():
+            return False
+        
+        #6. Early exit with errors
+        if "Error executing tool" in observation:
             return False
 
         return True
@@ -264,7 +352,7 @@ class ReactAgent:
 
         while iteration < self.max_iterations:
             # Step 1: Plan the next action
-            action = self.plan(task, context)
+            action = self.plan(task, context, history=self.intermediate_steps)
             print(f"ACTION: {action}")
 
             # Step 2: Execute the action

@@ -78,7 +78,29 @@ export class AgentDemo implements OnInit {
         this.result = result;
         // attempt to parse the backend output into structured JSON for nicer display
         try {
+          // Primary: try the top-level result (some tools return the final aggregated grade here)
           this.parsedOutput = this.tryParseOutput(result.result?.output ?? result.result);
+
+          // If that didn't yield a grading object (no breakdown/summary), try to find
+          // a grading result in the agent steps (some agents return the final tool as an earlier step).
+          const looksLikeGrade = (obj: any) => obj && (obj.breakdown || obj.summary || (typeof obj.total_score === 'number'));
+
+          if (!looksLikeGrade(this.parsedOutput) && Array.isArray(result.steps)) {
+            // search steps for a parsed observation that looks like a grade result
+            for (let i = result.steps.length - 1; i >= 0; i--) {
+              const step = result.steps[i];
+              try {
+                const parsedStep = this.tryParseOutput(step.observation ?? step.result ?? step);
+                if (looksLikeGrade(parsedStep)) {
+                  this.parsedOutput = parsedStep;
+                  break;
+                }
+              } catch {
+                // ignore and continue
+              }
+            }
+          }
+
         } catch {
           this.parsedOutput = null;
         }
@@ -169,7 +191,8 @@ export class AgentDemo implements OnInit {
   }
 
   // Lightweight tolerant parser: tries JSON.parse, then extracts a {...} block and
-  // falls back to replacing single quotes with double quotes for simple Python-style dicts.
+  // Lightweight tolerant parser: tries JSON.parse, then extracts a balanced {...} or [...] block
+  // and falls back to fixes (trailing commas, single quotes) for simple Python-style dicts/arrays.
   private tryParseOutput(raw: any): any {
     if (!raw) return null;
     if (typeof raw !== 'string') return raw;
@@ -183,16 +206,55 @@ export class AgentDemo implements OnInit {
       // continue
     }
 
-    // 2) Extract first {...} block
-    const match = text.match(/\{[\s\S]*\}/);
-    const candidate = match ? match[0] : text;
-
-    // 3) Tolerant single-quote -> double-quote conversion (for simple cases)
-    const doubleQuoted = candidate.replace(/'/g, '"');
-    try {
-      return JSON.parse(doubleQuoted);
-    } catch (e) {
+    // Helper: find first balanced JSON object or array
+    const extractBalanced = (t: string): string | null => {
+      const startBrace = t.search(/[\[{]/);
+      if (startBrace === -1) return null;
+      let i = startBrace;
+      let depth = 0;
+      let inString = false;
+      let escape = false;
+      const openChar = t[startBrace];
+      const closeChar = openChar === '{' ? '}' : ']';
+      while (i < t.length) {
+        const ch = t[i];
+        if (escape) {
+          escape = false;
+        } else if (ch === '\\') {
+          escape = true;
+        } else if (ch === '"') {
+          inString = !inString;
+        } else if (!inString) {
+          if (ch === openChar) depth += 1;
+          else if (ch === closeChar) {
+            depth -= 1;
+            if (depth === 0) return t.slice(startBrace, i + 1);
+          }
+        }
+        i += 1;
+      }
       return null;
+    };
+
+    const candidate = extractBalanced(text) || text;
+
+    // Try parsing candidate as-is
+    try {
+      return JSON.parse(candidate);
+    } catch (e) {
+      // try to fix common issues: trailing commas
+      try {
+        const fixed = candidate.replace(/,\s*(?=[}\]])/g, '');
+        return JSON.parse(fixed);
+      } catch (e2) {
+        // last attempt: replace single quotes with double quotes for simple cases
+        try {
+          const replaced = candidate.replace(/'/g, '"');
+          return JSON.parse(replaced);
+        } catch (e3) {
+          return null;
+        }
+      }
     }
   }
 

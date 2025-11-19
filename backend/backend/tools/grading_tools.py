@@ -1,6 +1,5 @@
 import json
 import ast
-import tempfile
 import os
 from typing import Dict, Any, Optional, List
 
@@ -12,128 +11,263 @@ from backend.tools.analysis_tools import (
     _run_test_cases,
 )
 
-def grade_python_assignment(
-    rubric_path: str,
-    submission_path: str,
-    test_cases_path: Optional[str] = None
-) -> Dict[str, Any]:
-    """Grade a Python coding assignment based on a rubric from files.
+# ---------------------------------------------------------
+# 1. FILE LOADING TOOLS
+# ---------------------------------------------------------
 
-    Args:
-        rubric_path: Path to JSON file containing grading rubric
-        submission_path: Path to the student's Python file
-        test_cases_path: Optional path to JSON file with test cases
+def load_rubric(rubric_path: str) -> Dict[str, Any]:
+    """Load a grading rubric from a JSON file."""
 
-    Returns:
-        Dictionary containing grade breakdown, total score, and feedback
-    """
-    # Read rubric from file
-    # TEMP: HARD-CODED PATH, replace with below comments for dynamic acceptance of parameters
-    # with open(rubric_path, 'r') as f:
-    #     rubric = json.load(f)
-    with open('/workspaces/Team-H/examples/student_example/rubric.json', 'r') as f:
-        rubric = json.load(f)
-    
-    # Read student code from file
-    # TEMP: HARD-CODED PATH, replace with below comments for dynamic acceptance of parameters
-    with open('/workspaces/Team-H/examples/student_example/student_submission.py', 'r') as f:
+    ## TEMP: rubric path is currently hard coded, this should be changed
+    rubric_path = '/workspaces/Team-H/examples/student_example/rubric.json'
+    with open(rubric_path, "r") as f:
+        return json.load(f)
+
+
+def load_submission(submission_path: str) -> str:
+    """Load student code from a .py file."""
+
+    ## TEMP: Submission path is currently hard coded, this should be changed
+    submission_path = '/workspaces/Team-H/examples/student_example/student_submission.py'
+    with open(submission_path, "r") as f:
         student_code = f.read()
     
-    # Read test cases if provided
-    # TEMP: HARD-CODED PATH, replace with below comments for dynamic acceptance of parameters
-    # test_cases = None
-    # if test_cases_path and os.path.exists(test_cases_path):
-    #     with open(test_cases_path, 'r') as f:
-    #         test_cases = json.load(f)
-    test_cases = None
-    if test_cases_path:
-        with open('/workspaces/Team-H/examples/student_example/test_cases.json', 'r') as f:
-            test_cases = json.load(f)
-    
-    # Initialize results
+    # account for multi-line comments throwing python syntax errors 
+    stripped = student_code.lstrip()
+
+    if not (stripped.startswith("#") or stripped.startswith('"""') or stripped.startswith("'''")):
+        # If it doesn’t start with a valid Python comment/docstring, wrap it
+        student_code = f'"""\n{student_code}\n"""\n'
+
+    return student_code
+
+
+def load_test_cases(test_cases_path: str) -> Optional[List[Dict[str, Any]]]:
+    """Load test cases from a JSON file."""
+
+    ## TEMP: Test cases path is currently hard coded, this should be changed
+    test_cases_path = '/workspaces/Team-H/examples/student_example/test_cases.json'
+    if not test_cases_path or not os.path.exists(test_cases_path):
+        return None
+    with open(test_cases_path, "r") as f:
+        return json.load(f)
+
+
+# ---------------------------------------------------------
+# 2. ATOMIC CHECKING TOOLS
+# ---------------------------------------------------------
+
+def check_syntax(code: str) -> Dict[str, Any]:
+    """Check whether the student's code has valid Python syntax."""
+    try:
+        ast.parse(code)
+        return {
+            "valid": True,
+            "error": None
+        }
+    except SyntaxError as e:
+        return {
+            "valid": False,
+            "error": str(e)
+        }
+
+
+def check_required_elements(code: str, required_items: List[str]) -> Dict[str, Any]:
+    """
+    Check whether required functions or classes appear in the code.
+    required_items: ["function_name", "ClassName"]
+    """
+    if not _is_valid_syntax(code):
+        return {"found": [], "missing": required_items}
+
+    tree = ast.parse(code)
+    found = _extract_elements(tree)
+
+    missing = [r for r in required_items if r not in found]
+
+    return {
+        "found": found,
+        "missing": missing
+    }
+
+
+def check_documentation_tools(code: str) -> Dict[str, Any]:
+    """Check docstrings and comments using your helper scoring."""
+    if not _is_valid_syntax(code):
+        return {"score": 0.0, "feedback": "Invalid syntax, cannot analyze documentation"}
+
+    tree = ast.parse(code)
+    score = _check_documentation(tree, code)
+
+    return {
+        "score": score,
+        "feedback": (
+            "Well documented" if score >= 0.8 else
+            "Partial documentation" if score >= 0.5 else
+            "Poor documentation"
+        )
+    }
+
+
+def check_style_tools(code: str) -> Dict[str, Any]:
+    """Check basic style using your scoring system."""
+    score = _check_style(code)
+    return {
+        "score": score,
+        "feedback": (
+            "Good style" if score >= 0.8 else
+            "Could improve style"
+        )
+    }
+
+
+def run_functional_tests(code: str, test_cases: Optional[List[Dict[str, Any]]]) -> Dict[str, Any]:
+    """Run functional test cases against the student's code."""
+    if not test_cases:
+        return {
+            "passed": 0,
+            "total": 0,
+            "feedback": ["No test cases provided."]
+        }
+
+    passed, total, feedback = _run_test_cases(code, test_cases)
+
+    return {
+        "passed": passed,
+        "total": total,
+        "feedback": feedback
+    }
+
+
+# ---------------------------------------------------------
+# 3. AGGREGATION TOOL (FINAL GRADE)
+# ---------------------------------------------------------
+
+def compute_final_grade(
+    rubric: Dict[str, Any],
+    syntax: Dict[str, Any],
+    required: Dict[str, Any],
+    documentation: Dict[str, Any],
+    style: Dict[str, Any],
+    tests: Dict[str, Any],
+) -> Dict[str, Any]:
+    """
+    Combine all partial results into a rubric-based final grade.
+    This is the final "reduce" step after all atomic tools have been run.
+    """
+
     results = {
-        "student_file": os.path.basename(submission_path),
+        "breakdown": {},
         "total_score": 0,
         "max_score": 0,
-        "breakdown": {},
-        "feedback": []
+        "percentage": 0,
     }
-    
-    # Parse rubric and initialize scores
-    for category, criteria in rubric.items():
-        results["breakdown"][category] = {
-            "earned": 0,
-            "possible": criteria.get("points", 0),
-            "feedback": []
-        }
-        results["max_score"] += criteria.get("points", 0)
-    
-    # 1. Check syntax validity
+
+    # 1. Syntax
     if "syntax" in rubric:
-        try:
-            ast.parse(student_code)
-            results["breakdown"]["syntax"]["earned"] = rubric["syntax"]["points"]
-            results["breakdown"]["syntax"]["feedback"].append("✓ Code has valid syntax")
-        except SyntaxError as e:
-            results["breakdown"]["syntax"]["feedback"].append(f"✗ Syntax error: {e}")
-    
-    # 2. Check for required elements (functions, classes, imports)
+        pts = rubric["syntax"]["points"]
+        results["max_score"] += pts
+
+        earned = pts if syntax["valid"] else 0
+        results["breakdown"]["syntax"] = {
+            "earned": earned,
+            "possible": pts,
+            "feedback": ["✓ Valid syntax"] if syntax["valid"] else [f"✗ Syntax error: {syntax['error']}"]
+        }
+        results["total_score"] += earned
+
+    # 2. Required elements
     if "required_elements" in rubric:
-        tree = ast.parse(student_code) if _is_valid_syntax(student_code) else None
-        if tree:
-            required = rubric["required_elements"].get("items", [])
-            found_elements = _extract_elements(tree)
-            
-            points_per_item = rubric["required_elements"]["points"] / len(required) if required else 0
-            for item in required:
-                if item in found_elements:
-                    results["breakdown"]["required_elements"]["earned"] += points_per_item
-                    results["breakdown"]["required_elements"]["feedback"].append(f"✓ Found: {item}")
-                else:
-                    results["breakdown"]["required_elements"]["feedback"].append(f"✗ Missing: {item}")
-    
-    # 3. Check documentation/comments
-    if "documentation" in rubric:
-        tree = ast.parse(student_code) if _is_valid_syntax(student_code) else None
-        if tree:
-            doc_score = _check_documentation(tree, student_code)
-            max_doc = rubric["documentation"]["points"]
-            results["breakdown"]["documentation"]["earned"] = doc_score * max_doc
-            if doc_score >= 0.8:
-                results["breakdown"]["documentation"]["feedback"].append("✓ Well documented")
-            elif doc_score >= 0.5:
-                results["breakdown"]["documentation"]["feedback"].append("⚠ Partial documentation")
+        pts = rubric["required_elements"]["points"]
+        results["max_score"] += pts
+
+        required_items = rubric["required_elements"]["items"]
+        per_item = pts / len(required_items) if required_items else 0
+
+        earned = per_item * (len(required_items) - len(required["missing"]))
+
+        feedback = []
+        for item in required_items:
+            if item in required["found"]:
+                feedback.append(f"✓ Found: {item}")
             else:
-                results["breakdown"]["documentation"]["feedback"].append("✗ Poor documentation")
-    
-    # 4. Run test cases
-    if "functionality" in rubric and test_cases:
-        passed, total, feedback = _run_test_cases(student_code, test_cases)
-        if total > 0:
-            results["breakdown"]["functionality"]["earned"] = (passed / total) * rubric["functionality"]["points"]
-            results["breakdown"]["functionality"]["feedback"].append(f"Passed {passed}/{total} test cases")
-            results["breakdown"]["functionality"]["feedback"].extend(feedback)
-    
-    # 5. Check code style/quality
+                feedback.append(f"✗ Missing: {item}")
+
+        results["breakdown"]["required_elements"] = {
+            "earned": earned,
+            "possible": pts,
+            "feedback": feedback
+        }
+        results["total_score"] += earned
+
+    # 3. Documentation
+    if "documentation" in rubric:
+        pts = rubric["documentation"]["points"]
+        results["max_score"] += pts
+
+        earned = pts * documentation["score"]
+
+        results["breakdown"]["documentation"] = {
+            "earned": earned,
+            "possible": pts,
+            "feedback": [documentation["feedback"]]
+        }
+        results["total_score"] += earned
+
+    # 4. Style
     if "style" in rubric:
-        style_score = _check_style(student_code)
-        results["breakdown"]["style"]["earned"] = style_score * rubric["style"]["points"]
-        if style_score >= 0.8:
-            results["breakdown"]["style"]["feedback"].append("✓ Good code style")
-        else:
-            results["breakdown"]["style"]["feedback"].append("⚠ Could improve code style")
-    
-    # Calculate total score
+        pts = rubric["style"]["points"]
+        results["max_score"] += pts
+
+        earned = pts * style["score"]
+
+        results["breakdown"]["style"] = {
+            "earned": earned,
+            "possible": pts,
+            "feedback": [style["feedback"]]
+        }
+        results["total_score"] += earned
+
+    # 5. Test Cases
+    if "functionality" in rubric and tests["total"] > 0:
+        pts = rubric["functionality"]["points"]
+        results["max_score"] += pts
+
+        pass_ratio = tests["passed"] / tests["total"]
+        earned = pts * pass_ratio
+
+        results["breakdown"]["functionality"] = {
+            "earned": earned,
+            "possible": pts,
+            "feedback": [f"Passed {tests['passed']} / {tests['total']} tests"] + tests["feedback"]
+        }
+        results["total_score"] += earned
+
+    # Recalculate total score from the breakdown to avoid double-counting and keep a single source of truth
+    results["total_score"] = 0
     for category in results["breakdown"].values():
         results["total_score"] += category["earned"]
-    
+
     # Round scores
     results["total_score"] = round(results["total_score"], 2)
     for category in results["breakdown"].values():
         category["earned"] = round(category["earned"], 2)
-    
+
     # Generate overall feedback
     percentage = (results["total_score"] / results["max_score"] * 100) if results["max_score"] > 0 else 0
     results["percentage"] = round(percentage, 1)
-    
+
+    # Human-friendly summary for frontend display
+    title = rubric.get("title") or rubric.get("name") or "Assignment"
+    if results["max_score"] > 0:
+        summary = f"{title}: {results['total_score']} / {round(results['max_score'],2)} pts ({results['percentage']}%)"
+    else:
+        summary = f"{title}: No graded items"
+
+    # If functionality existed in the rubric but there were no test cases, add a short note
+    if "functionality" in rubric and tests.get("total", 0) == 0:
+        summary += " — Functionality tests were skipped (no test cases provided)."
+
+    results["summary"] = summary
+
     return results

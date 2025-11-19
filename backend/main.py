@@ -6,9 +6,24 @@ from pydantic import BaseModel
 from typing import Dict, Any, Optional
 
 from backend.agent import ReactAgent, ToolRegistry, ToolSchema
-from backend.tools import calculator, string_analyzer, list_processor, json_formatter, grade_python_assignment, run_pytest_on_directory
+from backend.tools import (
+    # Examples
+    calculator,
+    string_analyzer,
+    list_processor,
+    json_formatter,
+    run_pytest_on_directory,
 
-
+    load_rubric,
+    load_submission,
+    load_test_cases,
+    check_syntax,
+    check_required_elements,
+    check_documentation_tools,
+    check_style_tools,
+    run_functional_tests,
+    compute_final_grade,
+)
 
 app = FastAPI(
     title="React Agent API",
@@ -88,24 +103,6 @@ tool_registry.register_tool(
 )
 
 tool_registry.register_tool(
-    "grade_python_assignment",
-    grade_python_assignment,
-    "Grade a Python coding assignment based on a rubric",
-    {
-        "type": "object",
-        "properties": {
-            "rubric_path": {"type": "string"},
-            "submission_path": {"type": "string"},
-            "test_cases_path": {
-                "type": "string",
-                "default": None,
-            },
-        },
-        "required": ["rubric_path", "submission_path"],
-    },
-)
-
-tool_registry.register_tool(
     "run_pytest_on_directory",
     run_pytest_on_directory,
     "Run pytest inside a student submission directory and return structured results",
@@ -116,6 +113,143 @@ tool_registry.register_tool(
         },
         "required": ["directory_path"]
     }
+)
+
+tool_registry.register_tool(
+    "load_rubric",
+    load_rubric,
+    "Load a grading rubric from a JSON file",
+    {
+        "type": "object",
+        "properties": {
+            "rubric_path": {"type": "string"},
+        },
+        "required": ["rubric_path"],
+    },
+)
+
+tool_registry.register_tool(
+    "load_submission",
+    load_submission,
+    "Load a student's Python submission file",
+    {
+        "type": "object",
+        "properties": {
+            "submission_path": {"type": "string"},
+        },
+        "required": ["submission_path"],
+    },
+)
+
+tool_registry.register_tool(
+    "load_test_cases",
+    load_test_cases,
+    "Load test cases from JSON file",
+    {
+        "type": "object",
+        "properties": {
+            "test_cases_path": {"type": "string"},
+        },
+        "required": ["test_cases_path"],
+    },
+)
+
+tool_registry.register_tool(
+    "load_test_cases",
+    load_test_cases,
+    "Load test cases from JSON file",
+    {
+        "type": "object",
+        "properties": {
+            "test_cases_path": {"type": "string"},
+        },
+        "required": ["test_cases_path"],
+    },
+)
+
+tool_registry.register_tool(
+    "check_syntax",
+    check_syntax,
+    "Check syntax validity of Python code",
+    {
+        "type": "object",
+        "properties": {
+            "code": {"type": "string"},
+        },
+        "required": ["code"],
+    },
+)
+
+tool_registry.register_tool(
+    "check_required_elements",
+    check_required_elements,
+    "Check required functions/classes exist in the code",
+    {
+        "type": "object",
+        "properties": {
+            "code": {"type": "string"},
+            "required_items": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": ["code", "required_items"],
+    },
+)
+
+tool_registry.register_tool(
+    "check_documentation_tools",
+    check_documentation_tools,
+    "Check documentation and docstring completeness",
+    {
+        "type": "object",
+        "properties": {
+            "code": {"type": "string"},
+        },
+        "required": ["code"],
+    },
+)
+
+tool_registry.register_tool(
+    "check_style_tools",
+    check_style_tools,
+    "Check code style quality",
+    {
+        "type": "object",
+        "properties": {
+            "code": {"type": "string"},
+        },
+        "required": ["code"],
+    },
+)
+
+tool_registry.register_tool(
+    "run_functional_tests",
+    run_functional_tests,
+    "Run functional test cases on student code",
+    {
+        "type": "object",
+        "properties": {
+            "code": {"type": "string"},
+            "test_cases": {"type": "array"}
+        },
+        "required": ["code", "test_cases"],
+    },
+)
+
+tool_registry.register_tool(
+    "compute_final_grade",
+    compute_final_grade,
+    "Compute the final grade from all grading components",
+    {
+        "type": "object",
+        "properties": {
+            "rubric": {"type": "object"},
+            "syntax": {"type": "object"},
+            "required": {"type": "object"},
+            "documentation": {"type": "object"},
+            "style": {"type": "object"},
+            "tests": {"type": "object"},
+        },
+        "required": ["rubric", "syntax", "required", "documentation", "style", "tests"],
+    },
 )
 
 # Initialize agent

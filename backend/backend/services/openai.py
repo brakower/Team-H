@@ -83,23 +83,146 @@ class OpenAIService:
             truncated = sanitized[:2000]
 
             # First, try a best-effort extraction of JSON if the model returned extra text.
+            def _extract_first_json_object(text: str) -> str | None:
+                """Find the first balanced JSON object in text and return it as a substring.
+
+                This scans from the first '{' and finds the matching closing '}' taking
+                string quoting and escapes into account. Returns None if no balanced
+                object is found.
+                """
+                if not text:
+                    return None
+                # remove common markdown fences
+                t = re.sub(r"```(?:json)?", "", text, flags=re.I).strip()
+                # find first '{'
+                start = t.find('{')
+                if start == -1:
+                    return None
+                i = start
+                depth = 0
+                in_string = False
+                escape = False
+                while i < len(t):
+                    ch = t[i]
+                    if escape:
+                        escape = False
+                    elif ch == '\\':
+                        escape = True
+                    elif ch == '"':
+                        in_string = not in_string
+                    elif not in_string:
+                        if ch == '{':
+                            depth += 1
+                        elif ch == '}':
+                            depth -= 1
+                            if depth == 0:
+                                return t[start:i+1]
+                    i += 1
+                return None
+
             try:
-                # Remove common markdown fences
-                cleaned = re.sub(r"```(?:json)?", "", sanitized, flags=re.I).strip()
-                # Extract the first {...} block
-                m = re.search(r"(\{.*\})", cleaned, flags=re.S)
-                if m:
+                # Find all balanced JSON-like candidates (objects or arrays) in the text.
+                def _find_all_balanced_json(text: str) -> list:
+                    results = []
+                    if not text:
+                        return results
+                    t = text
+                    i = 0
+                    while i < len(t):
+                        if t[i] not in '{[':
+                            i += 1
+                            continue
+                        start = i
+                        open_char = t[i]
+                        close_char = '}' if open_char == '{' else ']'
+                        depth = 0
+                        in_string = False
+                        escape = False
+                        j = i
+                        while j < len(t):
+                            ch = t[j]
+                            if escape:
+                                escape = False
+                            elif ch == '\\':
+                                escape = True
+                            elif ch == '"':
+                                in_string = not in_string
+                            elif not in_string:
+                                if ch == open_char:
+                                    depth += 1
+                                elif ch == close_char:
+                                    depth -= 1
+                                    if depth == 0:
+                                        results.append(t[start:j+1])
+                                        i = j
+                                        break
+                            j += 1
+                        i += 1
+                    return results
+
+                candidates = _find_all_balanced_json(sanitized)
+                # If nothing was found, fall back to the single-object extractor
+                if not candidates:
+                    first = _extract_first_json_object(sanitized)
+                    if first:
+                        candidates = [first]
+
+                # Heuristics: prefer candidates that contain keys likely in the response model
+                preferred_keys = [b'tool', b'tool_input', b'summary', b'breakdown', b'total_score']
+
+                def _score_candidate_bytes(s: str) -> int:
+                    sb = s.encode('utf-8', errors='ignore')
+                    score = 0
+                    for k in preferred_keys:
+                        if k in sb:
+                            score += 1
+                    return score
+
+                # Sort candidates by heuristic score (higher first)
+                candidates = sorted(candidates, key=lambda c: -_score_candidate_bytes(c))
+
+                for candidate in candidates:
+                    obj = None
+                    # Try strict JSON first
                     try:
-                        obj = json.loads(m.group(1))
-                        parsed = response_model.model_validate(obj)
-                        # Log that we recovered a parse and return the parsed model
-                        logger.info("Recovered JSON from LLM output (log_id=%s)", log_id)
-                        return parsed
+                        obj = json.loads(candidate)
                     except Exception:
-                        # fall through to logging below
-                        pass
+                        # Attempt to fix common JSON issues: trailing commas
+                        try:
+                            fixed = re.sub(r",\s*(?=[}\]])", "", candidate)
+                            obj = json.loads(fixed)
+                        except Exception:
+                            obj = None
+                    # single-quote fallback
+                    if obj is None:
+                        try:
+                            obj = json.loads(candidate.replace("'", '"'))
+                        except Exception:
+                            obj = None
+                    # backslash fixes
+                    if obj is None:
+                        try:
+                            backslash_fixed = re.sub(r'\\(?!["\\/bfnrtu])', r'\\\\', candidate)
+                            try:
+                                obj = json.loads(backslash_fixed)
+                            except Exception:
+                                try:
+                                    obj = json.loads(backslash_fixed.replace("'", '"'))
+                                except Exception:
+                                    obj = None
+                        except Exception:
+                            obj = None
+
+                    if obj is not None:
+                        try:
+                            parsed = response_model.model_validate(obj)
+                            logger.info("Recovered JSON from LLM output (log_id=%s)", log_id)
+                            return parsed
+                        except Exception:
+                            # not a valid model instance, try next candidate
+                            continue
             except Exception:
-                # ignore best-effort extraction errors
+                # ignore extraction errors and continue to final logging
                 pass
 
             # Log warning with correlation id and truncated raw content for debugging.
