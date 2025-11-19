@@ -39,7 +39,7 @@ The Python backend includes:
 
 - **Tool System**: 
   - Tool registry for dynamic tool management
-  - Built-in tools (calculator, string analyzer, list processor, JSON formatter)
+  - Built-in tools
   - Auto-generated parameter schemas
   
 - **FastAPI REST API**:
