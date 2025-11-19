@@ -3,7 +3,7 @@ import ast
 import os
 from typing import Dict, Any, Optional, List
 
-from backend.tools.analysis_tools import (
+from tools.analysis_tools import (
     _is_valid_syntax,
     _extract_elements,
     _check_style,

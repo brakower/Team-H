@@ -1,6 +1,6 @@
 """Agent package initialization."""
 
-from backend.agent.react_agent import (
+from agent.react_agent import (
     ReactAgent,
     ToolRegistry,
     AgentAction,

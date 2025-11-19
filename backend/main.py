@@ -5,8 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
 
-from backend.agent import ReactAgent, ToolRegistry, ToolSchema
-from backend.tools import (
+from agent import ReactAgent, ToolRegistry, ToolSchema
+from tools import (
     # Examples
     run_pytest_on_directory,
     load_rubric,

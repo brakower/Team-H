@@ -1,11 +1,11 @@
 """Tools package initialization."""
 
 # Public tools
-from backend.tools.testing_tools import (
+from tools.testing_tools import (
     run_pytest_on_directory,
 )
 
-from backend.tools.grading_tools import (
+from tools.grading_tools import (
     load_rubric,
     load_submission,
     load_test_cases,
