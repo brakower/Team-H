@@ -4,6 +4,10 @@
     "concurrently": "^9.2.1"
   },
   "dependencies": {
+    "@angular/common": "^21.0.0",
+    "@angular/core": "^21.0.0",
+    "@angular/platform-browser": "^21.0.0",
+    "@angular/platform-browser-dynamic": "^21.0.0",
     "openai": "^6.9.0"
   }
 }

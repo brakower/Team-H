@@ -7,14 +7,14 @@ import json
 import uuid
 from fastapi import Depends
 from pydantic import BaseModel
-from backend.models.tool_schema import ToolSchema
+from models.tool_schema import ToolSchema
 from openai import AzureOpenAI
 
 from dotenv import load_dotenv
 from pathlib import Path
 
 # Explicitly load the .env file from the project root
-env_path = Path(__file__).resolve().parents[2] / ".env"
+env_path = Path(__file__).resolve().parents[1] / ".env"
 load_dotenv(dotenv_path=env_path)
 
 API_KEY = os.getenv("UNC_OPENAI_API_KEY")
@@ -47,7 +47,7 @@ class OpenAIService:
         response_model: Type[T],
     ) -> T:
         """Send a prompt to Azure OpenAI and parse JSON response into the given model."""
-    
+        print(f"API-----> {API_KEY, API_ENDPOINT}")
         try:
             completion = self._client.chat.completions.create(
                 model=self._model,

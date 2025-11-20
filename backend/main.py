@@ -5,15 +5,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
 
-from backend.agent import ReactAgent, ToolRegistry, ToolSchema
-from backend.tools import (
+from agent import ReactAgent, ToolRegistry, ToolSchema
+from tools import (
     # Examples
-    calculator,
-    string_analyzer,
-    list_processor,
-    json_formatter,
     run_pytest_on_directory,
-
     load_rubric,
     load_submission,
     load_test_cases,
@@ -42,65 +37,6 @@ app.add_middleware(
 
 # Initialize tool registry and register tools
 tool_registry = ToolRegistry()
-tool_registry.register_tool(
-    "calculator",
-    calculator,
-    "Perform basic arithmetic operations (add, subtract, multiply, divide)",
-    {
-        "type": "object",
-        "properties": {
-            "operation": {
-                "type": "string",
-                "enum": ["add", "subtract", "multiply", "divide"],
-            },
-            "a": {"type": "number"},
-            "b": {"type": "number"},
-        },
-        "required": ["operation", "a", "b"],
-    },
-)
-
-tool_registry.register_tool(
-    "string_analyzer",
-    string_analyzer,
-    "Analyze a string and return statistics",
-    {
-        "type": "object",
-        "properties": {"text": {"type": "string"}},
-        "required": ["text"],
-    },
-)
-
-tool_registry.register_tool(
-    "list_processor",
-    list_processor,
-    "Process a list of items (count, sort, reverse, unique)",
-    {
-        "type": "object",
-        "properties": {
-            "items": {"type": "array", "items": {"type": "string"}},
-            "operation": {
-                "type": "string",
-                "enum": ["count", "sort", "reverse", "unique"],
-            },
-        },
-        "required": ["items", "operation"],
-    },
-)
-
-tool_registry.register_tool(
-    "json_formatter",
-    json_formatter,
-    "Format a dictionary as JSON",
-    {
-        "type": "object",
-        "properties": {
-            "data": {"type": "object"},
-            "indent": {"type": "integer", "default": 2},
-        },
-        "required": ["data"],
-    },
-)
 
 tool_registry.register_tool(
     "run_pytest_on_directory",

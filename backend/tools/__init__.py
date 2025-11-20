@@ -1,18 +1,11 @@
 """Tools package initialization."""
 
 # Public tools
-from backend.tools.example_tools import (
-    calculator,
-    string_analyzer,
-    list_processor,
-    json_formatter,
-)
-
-from backend.tools.testing_tools import (
+from tools.testing_tools import (
     run_pytest_on_directory,
 )
 
-from backend.tools.grading_tools import (
+from tools.grading_tools import (
     load_rubric,
     load_submission,
     load_test_cases,
@@ -25,12 +18,6 @@ from backend.tools.grading_tools import (
 )
 
 __all__ = [
-    # Core example tools
-    "calculator",
-    "string_analyzer",
-    "list_processor",
-    "json_formatter",
-
     # Atomic grading tools
     "load_rubric",
     "load_submission",

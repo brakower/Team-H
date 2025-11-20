@@ -2,9 +2,9 @@
 
 from typing import List, Dict, Any, Optional, Callable
 from fastapi import Depends
-from backend.models.tool_schema import ToolSchema
-from backend.models.agent_action import AgentAction, AgentStep, AgentFinish
-from backend.services.openai import OpenAIService, openai_client
+from models.tool_schema import ToolSchema
+from models.agent_action import AgentAction, AgentStep, AgentFinish
+from services.openai import OpenAIService, openai_client
 import json
 import inspect
 
@@ -215,6 +215,9 @@ class ReactAgent:
             f"{AgentAction.model_json_schema()}\n\n"
 
             f"Important rules:\n"
+            f"- You MUST return strictly valid JSON with properly escaped quotes.\n"
+            f"- NEVER include raw multi-line code inside JSON.\n"
+            f"- DO NOT include Markdown, backticks, comments, or any explanation in your output.\n"
             f"- DO NOT return the schema.\n"
             f"- DO NOT describe the schema.\n"
             f"- DO NOT explain your thinking.\n"

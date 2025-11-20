@@ -26,11 +26,26 @@ Team-H is a modern full-stack application featuring:
   - Manual schema override support
   - Tool execution with error handling
 
-- **Example Tools** (`backend/tools/example_tools.py`):
-  - Calculator (add, subtract, multiply, divide)
-  - String Analyzer (length, word count, statistics)
-  - List Processor (count, sort, reverse, unique)
-  - JSON Formatter (pretty-print with custom indent)
+- **Grading Tools** (`backend/tools/grading_tools.py`):
+  - load_rubric()
+  - load_submission()
+  - load_test_cases()
+  - check_syntax()
+  - check_required_elements()
+  - check_documentation_tools()
+  - check_style_tools()
+  - run_functional_tests()
+  - compute_final_grade()
+
+**Analysis Tools** (`backend/tools/grading_tools.py`):
+  - _is_valid_syntax()
+  - _extract_elements()
+  - _check_documentation()
+  - _check_style()
+  - _run_test_cases()
+
+**Testing Tools** (`backend/tools/grading_tools.py`):
+  - run_pytest_on_directory()
 
 - **FastAPI Application** (`main.py`):
   - RESTful API with 7 endpoints
@@ -105,9 +120,17 @@ Team-H/
 │   │   ├── agent/
 │   │   │   ├── __init__.py
 │   │   │   └── react_agent.py (360 lines)
+│   │   ├── models/
+│   │   │   ├── agent_action.py
+│   │   │   └── tool_schema.py (360 lines)
 │   │   ├── tools/
 │   │   │   ├── __init__.py
-│   │   │   └── example_tools.py (4 tools)
+│   │   │   ├── analysis_tools.py
+│   │   │   ├── grading_tools.py
+│   │   │   ├── syntax_tools.py
+│   │   │   └──  testing_tools.py
+│   │   ├── services/
+│   │   │   └── openai.py
 │   │   └── __init__.py
 │   ├── tests/
 │   │   ├── test_agent.py (17 tests)
