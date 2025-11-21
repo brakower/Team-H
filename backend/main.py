@@ -14,6 +14,7 @@ from tools import (
     # Examples
     run_pytest_on_directory,
     load_rubric,
+    list_repo_files,
     load_submission,
     load_test_cases,
     check_syntax,
@@ -67,6 +68,20 @@ tool_registry.register_tool(
         "required": ["rubric_path"],
     },
 )
+
+tool_registry.register_tool(
+    "list_repo_files",
+    list_repo_files,
+    "List all files inside a cloned student repository",
+    {
+        "type": "object",
+        "properties": {
+            "repo_path": {"type": "string"}
+        },
+        "required": ["repo_path"]
+    }
+)
+
 
 tool_registry.register_tool(
     "load_submission",
@@ -200,7 +215,7 @@ class TaskRequest(BaseModel):
     """Request model for running a task."""
 
     task: str
-    context: Optional[Dict[str, Any]] = None
+    context: Dict[str, Any]
     max_iterations: Optional[int] = 10
 
 
@@ -245,6 +260,7 @@ async def get_tool_schema(tool_name: str):
 @app.post("/run")
 async def run_agent(request: TaskRequest):
     """Run the agent with a task."""
+    print("REQUEST BODY:", request.dict())
     try:
         # Create new agent with custom max_iterations if provided
         current_agent = ReactAgent(tool_registry, max_iterations=request.max_iterations)

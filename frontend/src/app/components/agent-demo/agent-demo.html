@@ -98,18 +98,8 @@
 
 
   <div class="section">
-    <h2>Run Agent Task</h2>
+    <h2>Run Tests</h2>
     <div class="task-form">
-      <div class="form-group">
-        <label for="task">Task:</label>
-        <input 
-          id="task" 
-          type="text" 
-          [(ngModel)]="task" 
-          placeholder="Enter a task for the agent"
-          [disabled]="isLoading"
-        />
-      </div>
       
       <div class="form-group">
         <label for="maxIterations">Max Iterations:</label>
@@ -123,7 +113,7 @@
         />
       </div>
       
-      <button (click)="runTask()" [disabled]="isLoading || !task">
+      <button (click)="runTask()" [disabled]="isLoading || !anySelected() || !submissionUploadResponse">
         {{ isLoading ? 'Running...' : 'Run Task' }}
       </button>
     </div>
