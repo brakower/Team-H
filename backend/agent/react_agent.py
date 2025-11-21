@@ -144,13 +144,21 @@ class ReactAgent:
         self.max_iterations = max_iterations
         self.intermediate_steps: list[AgentStep] = []
 
-    def prompt_llm(self, prompt: str, available_tools: list[ToolSchema], history: list[AgentStep]):
+    def prompt_llm(self, prompt, available_tools, history, context=None):
+        print("here")
         openai_service = OpenAIService(client=openai_client())
+        print("next")
         tools_json = json.dumps([tool.model_dump() for tool in available_tools], indent=2)
+        context_json = json.dumps(context or {}, indent=2)  
+        print(f"context: {context}")
 
         history_text = "\n".join(
             [f"Step {i + 1}: Tool={step.action.tool}, Observation={step.observation}" for i, step in enumerate(history)]
         )
+        print("history")
+
+        repo_path = context["repo_path"]
+        print(repo_path)
         system_prompt = (
             f"Previous tool calls and observations:\n{history_text}\n\n"
             f"You have access to the following tools:\n\n{tools_json}\n\n"
@@ -160,18 +168,38 @@ class ReactAgent:
             # ------------------------------------------------------------
             f"When grading Python code, you MUST call tools in the EXACT following order:\n"
             f"1. load_rubric\n"
-            f"2. load_submission\n"
-            f"3. check_syntax\n"
-            f"4. check_required_elements\n"
-            f"5. check_documentation_tools\n"
-            f"6. check_style_tools\n"
-            f"7. load_test_cases\n"
-            f"8. run_functional_tests OR run_pytest_on_directory\n"
-            f"9. compute_final_grade\n\n"
+            f"2. list_repo_files\n"
+            f"3. load_submission\n"
+            f"4. check_syntax\n"
+            f"5. check_required_elements\n"
+            f"6. check_documentation_tools\n"
+            f"7. check_style_tools\n"
+            f"8. load_test_cases\n"
+            f"9. run_functional_tests OR run_pytest_on_directory\n"
+            f"10. compute_final_grade\n\n"
 
             # ------------------------------------------------------------
             # HISTORY AWARENESS AND NON-REPETITION
             # ------------------------------------------------------------
+            f"CONTEXT FROM FRONTEND:\n{context_json}\n\n"
+            f"IMPORTANT:\n"
+            f"- The student repository path is {repo_path}\n"
+            f"Before calling load_submission, you MUST call list_repo_files with:\n"
+            f"{{\n"
+            f"  \"repo_path\": \"{repo_path}\"\n"
+            f"}}\n\n"
+
+            f"The list_repo_files tool will return a JSON object containing:\n"
+            f"- the repo path\n"
+            f"- a list of all files in the repo directory\n\n"
+
+            f"IMPORTANT:\n"
+            f"- You MUST inspect this list to determine which Python file to load.\n"
+            f"- NEVER guess filenames like 'submission.py', 'solution.py', 'main.py', etc.\n"
+            f"- You MUST choose a file ending with `.py` from the list returned by list_repo_files.\n"
+            f"- When calling load_submission, ALWAYS pass the FULL PATH:\n"
+            f"    \"{repo_path}/FILENAME_FROM_LIST.py\"\n\n"
+
             f"You MUST use the previous tool calls listed above to decide your NEXT action.\n"
             f"NEVER call a tool again if it already appears in the history.\n\n"
 
@@ -268,7 +296,8 @@ class ReactAgent:
         action = self.prompt_llm(
             prompt=task,
             available_tools=available_tools,
-            history=history or []
+            history=history or [],
+            context=context
         )
         
         if not isinstance(action, AgentAction):
@@ -352,6 +381,7 @@ class ReactAgent:
         """
         self.intermediate_steps = []
         iteration = 0
+        print(f"RUN: {context}")
 
         while iteration < self.max_iterations:
             # Step 1: Plan the next action

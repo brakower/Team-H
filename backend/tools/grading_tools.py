@@ -23,23 +23,22 @@ def load_rubric(rubric_path: str) -> Dict[str, Any]:
     with open(rubric_path, "r") as f:
         return json.load(f)
 
+def list_repo_files(repo_path: str) -> dict:
+    import os
+    return {
+        "files": os.listdir(repo_path)
+    }
 
 def load_submission(submission_path: str) -> str:
     """Load student code from a .py file."""
+    print(f"SUB PATH: {submission_path}")
+    if not os.path.exists(submission_path):
+        raise FileNotFoundError(f"Submission file not found: {submission_path}")
 
-    ## TEMP: Submission path is currently hard coded, this should be changed
-    submission_path = '/workspaces/Team-H/examples/student_example/student_submission.py'
     with open(submission_path, "r") as f:
-        student_code = f.read()
-    
-    # account for multi-line comments throwing python syntax errors 
-    stripped = student_code.lstrip()
+        code = f.read()
 
-    if not (stripped.startswith("#") or stripped.startswith('"""') or stripped.startswith("'''")):
-        # If it doesn’t start with a valid Python comment/docstring, wrap it
-        student_code = f'"""\n{student_code}\n"""\n'
-
-    return student_code
+    return code
 
 
 def load_test_cases(test_cases_path: str) -> Optional[List[Dict[str, Any]]]:

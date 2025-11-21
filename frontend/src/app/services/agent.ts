@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { RubricItem } from "../models/rubric-item";
 
 export interface ToolSchema {
   name: string;
@@ -10,7 +11,10 @@ export interface ToolSchema {
 
 export interface AgentTask {
   task: string;
-  context?: any;
+  context: {
+    rubric_items: string[];      
+    repo_path: string;          
+  };
   max_iterations?: number;
 }
 
@@ -65,6 +69,10 @@ export class Agent {
     const formData = new FormData();
     formData.append("file", file);
     return this.http.post<File>(`${this.apiUrl}/upload`, formData);
+  }
+
+  uploadGithubRepo(url: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/upload-github`, { url });
   }
 }
 
