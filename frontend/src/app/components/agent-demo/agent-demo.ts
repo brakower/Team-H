@@ -35,7 +35,9 @@ export class AgentDemo implements OnInit {
   rubricUploadResponse: any = null;
   submissionUploadResponse: any = null;
   
-
+  rubricSchema: any = null;
+  rubricSelections: { [key: string]: boolean} = {};
+  expandedRubric: { [key: string]: boolean } = {};
 
   constructor(private agentService: Agent) {}
 
@@ -64,6 +66,13 @@ export class AgentDemo implements OnInit {
         next: (res) => {
           console.log("Rubric uploaded:", res);
           this.rubricUploadResponse = res;
+
+          this.rubricSchema = res;
+          this.rubricSelections = {};
+          this.expandedRubric = {};
+          res.rubric_items.forEach((item: any) => {
+            this.expandedRubric[item.id] = false;   // collapsed by default
+          });
         },
         error: (err) => {
           console.error("Rubric upload error:", err);

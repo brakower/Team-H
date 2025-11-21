@@ -23,38 +23,79 @@
   </div>
 
   <div class="section upload-section">
-    <h3>Upload Rubric</h3>
+    <h3>
+      @if (rubricUploadResponse) {
+        Upload Rubric: {{ rubricUploadResponse.filename }}
+      } @else {
+        Upload Rubric
+      }
+    </h3>
   
     <div class="upload-box">
       <input type="file" class="upload-input" (change)="onRubricSelected($event)">
       <button class="upload-button">Choose File</button>
     </div>
-  
-    @if (rubricUploadResponse) {
-      <div class="upload-status">
-        <strong>Rubric uploaded:</strong>
-        {{ rubricUploadResponse.filename }}
-      </div>
-    }
   </div>
   
+  @if (rubricSchema) {
+    <div class="section">
+      <h3>Select Rubric Criteria</h3>
   
-  <div class="section upload-section">
-    <h3>Upload Submission</h3>
+      @for (item of rubricSchema.rubric_items; track item.id) {
+        <div class="rubric-accordion">
+          
+          <!-- Header -->
+          <div 
+            class="rubric-header"
+            (click)="expandedRubric[item.id] = !expandedRubric[item.id]"
+          >
+            <div class="rubric-title">
+              <input type="checkbox"
+                     [(ngModel)]="rubricSelections[item.id]"
+                     (click)="$event.stopPropagation()" />
   
-    <div class="upload-box">
-      <input type="file" class="upload-input" accept="application/json" (change)="onSubmissionSelected($event)">
-      <button class="upload-button">Choose File</button>
+              <strong>{{ item.label }}</strong>
+            </div>
+  
+            <div class="arrow" [class.open]="expandedRubric[item.id]">▼</div>
+          </div>
+  
+          <!-- Body (hidden unless expanded) -->
+          @if (expandedRubric[item.id]) {
+            <div class="rubric-body">
+              <p>{{ item.description }}</p>
+              <p><em>{{ item.max_points }} points</em></p>
+  
+              @if (item.items) {
+                <ul>
+                  @for (sub of item.items; track sub) {
+                    <li>{{ sub }}</li>
+                  }
+                </ul>
+              }
+            </div>
+          }
+        </div>
+      }
     </div>
-  
-    @if (submissionUploadResponse) {
-      <div class="upload-status">
-        <strong>Submission uploaded:</strong>
-        {{ submissionUploadResponse.filename }}
+
+    <div class="section upload-section">
+      <h3>Upload Submission</h3>
+    
+      <div class="upload-box">
+        <input type="file" class="upload-input" accept="application/json" (change)="onSubmissionSelected($event)">
+        <button class="upload-button">Choose File</button>
       </div>
-    }
-  </div>
-  
+    
+      @if (submissionUploadResponse) {
+        <div class="upload-status">
+          <strong>Submission uploaded:</strong>
+          {{ submissionUploadResponse.filename }}
+        </div>
+      }
+    </div>
+  }
+
   <div class="section">
     <h2>Run Agent Task</h2>
     <div class="task-form">

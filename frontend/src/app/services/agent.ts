@@ -35,7 +35,6 @@ export interface ToolResult {
 })
 export class Agent {
   private apiUrl = 'http://localhost:8000';
-
   constructor(private http: HttpClient) { }
 
   getTools(): Observable<ToolSchema[]> {
@@ -65,7 +64,6 @@ export class Agent {
   uploadFile(file: File): Observable<any> {
     const formData = new FormData();
     formData.append("file", file);
-    console.log("Agent Service received file: " + file);
     return this.http.post<File>(`${this.apiUrl}/upload`, formData);
   }
 }

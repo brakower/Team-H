@@ -1,9 +1,10 @@
 """FastAPI application for the React Agent backend."""
-
+import json
 from fastapi import FastAPI, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
+from models.rubric_schema import RubricItem, RubricSchema
 
 from agent import ReactAgent, ToolRegistry, ToolSchema
 from tools import (
@@ -293,12 +294,37 @@ if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
-## TODO --> IMPLEMENT UPLOAD IN BACKEND
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
-    """Stub endpoint — does nothing, just returns file info."""
-    return {
-        "filename": file.filename,
-        "content_type": file.content_type,
-        "status": "received"
-    }
+    """Accept rubric JSON → parse → return structured rubric items"""
+
+    # load raw JSON
+    raw = await file.read()
+    print(f"RECEIVED RUBRIC: {file}")
+    try:
+        data = json.loads(raw.decode("utf-8"))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Invalid JSON file")
+    
+    # convert into structured RubricSchema
+    rubric_items=[]
+    total_points=0
+
+    for key, value in data.items():
+        item = RubricItem(
+            id=key,
+            label=key.replace("_", " ").title(),
+            description=value.get("description", ""),
+            max_points=value.get("points", 0),
+            type="required_elements" if "items" in value else "general",
+            items=value.get("items", None)
+        )
+        rubric_items.append(item)
+        total_points += item.max_points
+        
+    rubric_schema = RubricSchema(
+        rubric_items=rubric_items,
+        total_points=total_points
+    )
+    
+    return rubric_schema
