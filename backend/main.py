@@ -1,6 +1,6 @@
 """FastAPI application for the React Agent backend."""
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
@@ -291,3 +291,14 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+## TODO --> IMPLEMENT UPLOAD IN BACKEND
+@app.post("/upload")
+async def upload_file(file: UploadFile = File(...)):
+    """Stub endpoint — does nothing, just returns file info."""
+    return {
+        "filename": file.filename,
+        "content_type": file.content_type,
+        "status": "received"
+    }

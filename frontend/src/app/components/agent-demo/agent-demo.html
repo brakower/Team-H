@@ -23,6 +23,31 @@
   </div>
 
   <div class="section">
+    <h3>Upload Rubric</h3>
+    <input type="file" (change)="onRubricSelected($event)">
+  
+    @if (rubricUploadResponse) {
+      <div class="upload-status">
+        <strong>Rubric uploaded:</strong>
+        {{ rubricUploadResponse.filename }}
+      </div>
+    }
+  </div>
+  
+  
+  <div class="section">
+    <h3>Upload Submission</h3>
+    <input type="file" accept="application/json" (change)="onSubmissionSelected($event)">
+  
+    @if (submissionUploadResponse) {
+      <div class="upload-status">
+        <strong>Submission uploaded:</strong>
+        {{ submissionUploadResponse.filename }}
+      </div>
+    }
+  </div>
+
+  <div class="section">
     <h2>Run Agent Task</h2>
     <div class="task-form">
       <div class="form-group">
