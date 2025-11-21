@@ -233,3 +233,54 @@ button:disabled {
 @media (max-width: 880px) {
   .grade-and-result { grid-template-columns: 1fr; }
 }
+
+/* UPLOAD SECTIONS */
+.upload-section {
+  padding: 15px 0;
+}
+
+.upload-box {
+  display: inline-flex;
+  position: relative;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.upload-input {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 130px;
+  height: 40px;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.upload-button {
+  background: linear-gradient(135deg, #007bff 0%, #005fec 100%);
+  color: white;
+  border: none;
+  padding: 10px 22px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.15s ease;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+.upload-button:hover {
+  background: linear-gradient(135deg, #006ae0, #004ebf);
+  transform: translateY(-1px);
+}
+
+.upload-button:active {
+  transform: translateY(0px);
+}
+
+.upload-status {
+  margin-top: 6px;
+  font-size: 0.95rem;
+  color: #333;
+  padding: 6px 0;
+}

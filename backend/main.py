@@ -1,6 +1,6 @@
 """FastAPI application for the React Agent backend."""
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
@@ -285,6 +285,14 @@ async def execute_tool(request: ToolExecutionRequest):
 async def discover_tools():
     """Discover all available tools with their schemas."""
     return tool_registry.discover_tools()
+@app.post("/upload")
+async def upload_file(file: UploadFile = File(...)):
+    """Stub endpoint — does nothing, just returns file info."""
+    return {
+        "filename": file.filename,
+        "content_type": file.content_type,
+        "status": "received",
+    }
 
 
 if __name__ == "__main__":

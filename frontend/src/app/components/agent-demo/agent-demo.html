@@ -22,6 +22,39 @@
     </ul>
   </div>
 
+  <div class="section upload-section">
+    <h3>Upload Rubric</h3>
+  
+    <div class="upload-box">
+      <input type="file" class="upload-input" (change)="onRubricSelected($event)">
+      <button class="upload-button">Choose File</button>
+    </div>
+  
+    @if (rubricUploadResponse) {
+      <div class="upload-status">
+        <strong>Rubric uploaded:</strong>
+        {{ rubricUploadResponse.filename }}
+      </div>
+    }
+  </div>
+  
+  
+  <div class="section upload-section">
+    <h3>Upload Submission</h3>
+  
+    <div class="upload-box">
+      <input type="file" class="upload-input" accept="application/json" (change)="onSubmissionSelected($event)">
+      <button class="upload-button">Choose File</button>
+    </div>
+  
+    @if (submissionUploadResponse) {
+      <div class="upload-status">
+        <strong>Submission uploaded:</strong>
+        {{ submissionUploadResponse.filename }}
+      </div>
+    }
+  </div>
+  
   <div class="section">
     <h2>Run Agent Task</h2>
     <div class="task-form">

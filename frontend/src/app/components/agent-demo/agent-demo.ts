@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Agent, ToolSchema, AgentTask, AgentResult } from '../../services/agent';
+import { consumerPollProducersForChange } from '@angular/core/primitives/signals';
 
 @Component({
   selector: 'app-agent-demo',
@@ -28,6 +29,14 @@ export class AgentDemo implements OnInit {
   viewRaw: boolean = false;
   // expanded items (for truncation/collapse): store keys like 'step-1' or 'fb-category-0'
   expandedItems: Set<string> = new Set();
+  
+  rubricFile: File | null = null;
+  submissionFile: File | null = null;
+  
+  rubricUploadResponse: any = null;
+  submissionUploadResponse: any = null;
+  
+
 
   constructor(private agentService: Agent) {}
 
@@ -45,6 +54,42 @@ export class AgentDemo implements OnInit {
         this.error = 'Failed to load tools: ' + err.message;
       }
     });
+  }
+
+  onRubricSelected(event: any) {
+    console.log("Rubric file selected event:", event);
+    const file = event.target.files[0];
+    this.rubricFile = file;
+    console.log("Selected rubric file:", file);
+
+    if (file) {
+      this.agentService.uploadFile(file).subscribe({
+        next: (res) => {
+          console.log("Rubric uploaded:", res);
+          this.rubricUploadResponse = res;
+        },
+        error: (err) => {
+          console.error("Rubric upload error:", err);
+        }
+      })
+    }
+  }
+
+  onSubmissionSelected(event: any) {
+    const file = event.target.files[0];
+    this.submissionFile = file;
+  
+    if (file) {
+      this.agentService.uploadFile(file).subscribe({
+        next: (res) => {
+          console.log("Submission uploaded:", res);
+          this.submissionUploadResponse = res;
+        },
+        error: (err) => {
+          console.error("Submission upload error:", err);
+        }
+      });
+    }
   }
 
   checkHealth() {

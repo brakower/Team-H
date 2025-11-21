@@ -61,5 +61,12 @@ export class Agent {
   healthCheck(): Observable<any> {
     return this.http.get(`${this.apiUrl}/health`);
   }
+
+  uploadFile(file: File): Observable<any> {
+    const formData = new FormData();
+    formData.append("file", file);
+    console.log("Agent Service received file: " + file.name);
+    return this.http.post<File>(`${this.apiUrl}/upload`, formData);
+  }
 }
 
