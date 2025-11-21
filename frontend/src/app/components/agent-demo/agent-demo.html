@@ -22,9 +22,13 @@
     </ul>
   </div>
 
-  <div class="section">
+  <div class="section upload-section">
     <h3>Upload Rubric</h3>
-    <input type="file" (change)="onRubricSelected($event)">
+  
+    <div class="upload-box">
+      <input type="file" class="upload-input" (change)="onRubricSelected($event)">
+      <button class="upload-button">Choose File</button>
+    </div>
   
     @if (rubricUploadResponse) {
       <div class="upload-status">
@@ -35,9 +39,13 @@
   </div>
   
   
-  <div class="section">
+  <div class="section upload-section">
     <h3>Upload Submission</h3>
-    <input type="file" accept="application/json" (change)="onSubmissionSelected($event)">
+  
+    <div class="upload-box">
+      <input type="file" class="upload-input" accept="application/json" (change)="onSubmissionSelected($event)">
+      <button class="upload-button">Choose File</button>
+    </div>
   
     @if (submissionUploadResponse) {
       <div class="upload-status">
@@ -46,7 +54,7 @@
       </div>
     }
   </div>
-
+  
   <div class="section">
     <h2>Run Agent Task</h2>
     <div class="task-form">
