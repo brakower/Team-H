@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Agent, ToolSchema, AgentTask, AgentResult } from '../../services/agent';
+import { consumerPollProducersForChange } from '@angular/core/primitives/signals';
 
 @Component({
   selector: 'app-agent-demo',
@@ -56,10 +57,12 @@ export class AgentDemo implements OnInit {
   }
 
   onRubricSelected(event: any) {
+    console.log("Rubric file selected event:", event);
     const file = event.target.files[0];
     this.rubricFile = file;
+    console.log("Selected rubric file:", file);
 
-    if (File) {
+    if (file) {
       this.agentService.uploadFile(file).subscribe({
         next: (res) => {
           console.log("Rubric uploaded:", res);

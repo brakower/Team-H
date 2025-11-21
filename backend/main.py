@@ -285,20 +285,17 @@ async def execute_tool(request: ToolExecutionRequest):
 async def discover_tools():
     """Discover all available tools with their schemas."""
     return tool_registry.discover_tools()
-
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-
-
-## TODO --> IMPLEMENT UPLOAD IN BACKEND
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
     """Stub endpoint — does nothing, just returns file info."""
     return {
         "filename": file.filename,
         "content_type": file.content_type,
-        "status": "received"
+        "status": "received",
     }
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host="0.0.0.0", port=8000)

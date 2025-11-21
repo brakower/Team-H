@@ -65,7 +65,7 @@ export class Agent {
   uploadFile(file: File): Observable<any> {
     const formData = new FormData();
     formData.append("file", file);
-    console.log("Agent Service received file: " + file);
+    console.log("Agent Service received file: " + file.name);
     return this.http.post<File>(`${this.apiUrl}/upload`, formData);
   }
 }
