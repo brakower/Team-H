@@ -66,5 +66,9 @@ export class Agent {
     formData.append("file", file);
     return this.http.post<File>(`${this.apiUrl}/upload`, formData);
   }
+
+  uploadGithubRepo(url: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/upload-github`, { url });
+  }
 }
 

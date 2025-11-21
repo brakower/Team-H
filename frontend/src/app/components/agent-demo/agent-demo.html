@@ -83,18 +83,19 @@
       <h3>Upload Submission</h3>
     
       <div class="upload-box">
-        <input type="file" class="upload-input" accept="application/json" (change)="onSubmissionSelected($event)">
-        <button class="upload-button">Choose File</button>
+        <input type="url" [(ngModel)]="submissionRepoUrl" placeholder="https://github.com/username/repo">
+        <button class="upload-button" (click)="submitGithubUrl()">Load Repository</button>
       </div>
     
       @if (submissionUploadResponse) {
         <div class="upload-status">
-          <strong>Submission uploaded:</strong>
-          {{ submissionUploadResponse.filename }}
+          <strong>Repository Cloned:</strong>
+          {{ submissionUploadResponse.project_path }}
         </div>
       }
     </div>
   }
+
 
   <div class="section">
     <h2>Run Agent Task</h2>

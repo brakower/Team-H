@@ -1,6 +1,9 @@
 """FastAPI application for the React Agent backend."""
 import json
-from fastapi import FastAPI, HTTPException, File, UploadFile
+from fastapi import Body, FastAPI, HTTPException, File, UploadFile
+import tempfile
+import os
+from git import Repo
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
@@ -328,3 +331,33 @@ async def upload_file(file: UploadFile = File(...)):
     )
     
     return rubric_schema
+
+@app.post("/upload-github")
+async def upload_github_repo(payload: dict = Body(...)):
+    """
+    Accepts a GitHub repository URL, clones it, and returns local project path.
+    """
+
+    url = payload.get("url")
+    print("RECEIVED GITHUB URL:", url)
+
+    if not url or not isinstance(url, str):
+        raise HTTPException(status_code=400, detail="Missing repository URL")
+
+    if not (url.startswith("http://") or url.startswith("https://")):
+        raise HTTPException(status_code=400, detail="Invalid URL")
+
+    # Temporary storage
+    temp_dir = tempfile.mkdtemp()
+
+    try:
+        print("CLONING REPOSITORY INTO:", temp_dir)
+        Repo.clone_from(url, temp_dir)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to clone repository: {str(e)}")
+
+    return {
+        "status": "cloned",
+        "project_path": temp_dir,
+        "url": url
+    }

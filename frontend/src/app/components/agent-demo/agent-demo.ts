@@ -30,7 +30,7 @@ export class AgentDemo implements OnInit {
   expandedItems: Set<string> = new Set();
   
   rubricFile: File | null = null;
-  submissionFile: File | null = null;
+  submissionRepoUrl: string = "";
   
   rubricUploadResponse: any = null;
   submissionUploadResponse: any = null;
@@ -81,21 +81,23 @@ export class AgentDemo implements OnInit {
     }
   }
 
-  onSubmissionSelected(event: any) {
-    const file = event.target.files[0];
-    this.submissionFile = file;
-  
-    if (file) {
-      this.agentService.uploadFile(file).subscribe({
-        next: (res) => {
-          console.log("Submission uploaded:", res);
-          this.submissionUploadResponse = res;
-        },
-        error: (err) => {
-          console.error("Submission upload error:", err);
-        }
-      });
+  submitGithubUrl() {
+    this.submissionUploadResponse = null;
+
+    if (!this.submissionRepoUrl.trim()) {
+      console.error("No repository URL provided");
+      return;
     }
+
+    this.agentService.uploadGithubRepo(this.submissionRepoUrl).subscribe({
+      next: (res) => {
+        console.log("cloned repo: ", res);
+        this.submissionUploadResponse = res;
+      },
+      error: (err) => {
+        console.error("Github clone error: ", err);
+      }
+    });
   }
 
   checkHealth() {
