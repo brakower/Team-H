@@ -1,6 +1,9 @@
 """FastAPI application for the React Agent backend."""
 import json
-from fastapi import FastAPI, HTTPException, File, UploadFile
+from fastapi import Body, FastAPI, HTTPException, File, UploadFile
+import tempfile
+import os
+from git import Repo
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
@@ -11,6 +14,7 @@ from tools import (
     # Examples
     run_pytest_on_directory,
     load_rubric,
+    list_repo_files,
     load_submission,
     load_test_cases,
     check_syntax,
@@ -64,6 +68,20 @@ tool_registry.register_tool(
         "required": ["rubric_path"],
     },
 )
+
+tool_registry.register_tool(
+    "list_repo_files",
+    list_repo_files,
+    "List all files inside a cloned student repository",
+    {
+        "type": "object",
+        "properties": {
+            "repo_path": {"type": "string"}
+        },
+        "required": ["repo_path"]
+    }
+)
+
 
 tool_registry.register_tool(
     "load_submission",
@@ -197,7 +215,7 @@ class TaskRequest(BaseModel):
     """Request model for running a task."""
 
     task: str
-    context: Optional[Dict[str, Any]] = None
+    context: Dict[str, Any]
     max_iterations: Optional[int] = 10
 
 
@@ -242,6 +260,7 @@ async def get_tool_schema(tool_name: str):
 @app.post("/run")
 async def run_agent(request: TaskRequest):
     """Run the agent with a task."""
+    print("REQUEST BODY:", request.dict())
     try:
         # Create new agent with custom max_iterations if provided
         current_agent = ReactAgent(tool_registry, max_iterations=request.max_iterations)
@@ -328,3 +347,33 @@ async def upload_file(file: UploadFile = File(...)):
     )
     
     return rubric_schema
+
+@app.post("/upload-github")
+async def upload_github_repo(payload: dict = Body(...)):
+    """
+    Accepts a GitHub repository URL, clones it, and returns local project path.
+    """
+
+    url = payload.get("url")
+    print("RECEIVED GITHUB URL:", url)
+
+    if not url or not isinstance(url, str):
+        raise HTTPException(status_code=400, detail="Missing repository URL")
+
+    if not (url.startswith("http://") or url.startswith("https://")):
+        raise HTTPException(status_code=400, detail="Invalid URL")
+
+    # Temporary storage
+    temp_dir = tempfile.mkdtemp()
+
+    try:
+        print("CLONING REPOSITORY INTO:", temp_dir)
+        Repo.clone_from(url, temp_dir)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to clone repository: {str(e)}")
+
+    return {
+        "status": "cloned",
+        "project_path": temp_dir,
+        "url": url
+    }

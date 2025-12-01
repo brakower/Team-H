@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Agent, ToolSchema, AgentTask, AgentResult } from '../../services/agent';
+import { RubricItem } from '../../models/rubric-item';
 
 @Component({
   selector: 'app-agent-demo',
@@ -11,7 +12,6 @@ import { Agent, ToolSchema, AgentTask, AgentResult } from '../../services/agent'
 })
 export class AgentDemo implements OnInit {
   tools: ToolSchema[] = [];
-  task: string = '';
   maxIterations: number = 10;
   result: AgentResult | null = null;
   parsedOutput: any = null;
@@ -30,13 +30,13 @@ export class AgentDemo implements OnInit {
   expandedItems: Set<string> = new Set();
   
   rubricFile: File | null = null;
-  submissionFile: File | null = null;
+  submissionRepoUrl: string = "";
   
   rubricUploadResponse: any = null;
   submissionUploadResponse: any = null;
   
   rubricSchema: any = null;
-  rubricSelections: { [key: string]: boolean} = {};
+  rubricSelections: { [key: string]: boolean } = {};
   expandedRubric: { [key: string]: boolean } = {};
 
   constructor(private agentService: Agent) {}
@@ -57,6 +57,10 @@ export class AgentDemo implements OnInit {
     });
   }
 
+  anySelected(): boolean {
+    if (!this.rubricSelections) return false;
+    return Object.values(this.rubricSelections).some((v) => v === true);
+  }
   onRubricSelected(event: any) {
     const file = event.target.files[0];
     this.rubricFile = file;
@@ -70,8 +74,9 @@ export class AgentDemo implements OnInit {
           this.rubricSchema = res;
           this.rubricSelections = {};
           this.expandedRubric = {};
-          res.rubric_items.forEach((item: any) => {
-            this.expandedRubric[item.id] = false;   // collapsed by default
+          res.rubric_items.forEach((item: RubricItem) => {
+            this.expandedRubric[item.id] = false;
+            this.rubricSelections[item.id] = false;  // default
           });
         },
         error: (err) => {
@@ -81,21 +86,23 @@ export class AgentDemo implements OnInit {
     }
   }
 
-  onSubmissionSelected(event: any) {
-    const file = event.target.files[0];
-    this.submissionFile = file;
-  
-    if (file) {
-      this.agentService.uploadFile(file).subscribe({
-        next: (res) => {
-          console.log("Submission uploaded:", res);
-          this.submissionUploadResponse = res;
-        },
-        error: (err) => {
-          console.error("Submission upload error:", err);
-        }
-      });
+  submitGithubUrl() {
+    this.submissionUploadResponse = null;
+
+    if (!this.submissionRepoUrl.trim()) {
+      console.error("No repository URL provided");
+      return;
     }
+
+    this.agentService.uploadGithubRepo(this.submissionRepoUrl).subscribe({
+      next: (res) => {
+        console.log("cloned repo: ", res);
+        this.submissionUploadResponse = res;
+      },
+      error: (err) => {
+        console.error("Github clone error: ", err);
+      }
+    });
   }
 
   checkHealth() {
@@ -110,19 +117,31 @@ export class AgentDemo implements OnInit {
   }
 
   runTask() {
-    if (!this.task) {
-      this.error = 'Please enter a task';
-      return;
-    }
-
     this.isLoading = true;
     this.error = '';
     this.result = null;
 
+    const selectedItems: RubricItem[] = this.rubricSchema.rubric_items.filter(
+      (item: RubricItem) => this.rubricSelections[item.id]
+    );
+
+    if (selectedItems.length === 0) {
+      this.error = "Please select at least one rubric item.";
+      return;
+    }
+
+    console.log("REPO PATH: " + JSON.stringify(this.submissionUploadResponse, null, 2));
     const agentTask: AgentTask = {
-      task: this.task,
+      task: `Grade the student submission based on the following rubric criteria: ${
+        selectedItems.map(i => i.label).join(", ")
+      }.`,
+      context: {
+        rubric_items: selectedItems.map(item => item.id),
+        repo_path: this.submissionUploadResponse.project_path
+      } ,
       max_iterations: this.maxIterations
     };
+    console.log(agentTask)
 
     this.agentService.runAgent(agentTask).subscribe({
       next: (result) => {
