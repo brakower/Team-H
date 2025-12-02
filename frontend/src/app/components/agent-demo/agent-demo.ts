@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Agent, ToolSchema, AgentTask, AgentResult } from '../../services/agent';
 import { RubricItem } from '../../models/rubric-item';
+import { HttpEventType } from '@angular/common/http';
 
 @Component({
   selector: 'app-agent-demo',
@@ -40,6 +41,12 @@ export class AgentDemo implements OnInit {
   expandedRubric: { [key: string]: boolean } = {};
   // user-set max points per rubric item
   rubricPoints: { [key: string]: number } = {};
+  
+  itemResults: any = {};
+  totalScore: number | null = null;
+  maxScore: number | null = null;
+  percentage: number | null = null;
+
 
   constructor(private agentService: Agent) {}
 
@@ -397,5 +404,52 @@ export class AgentDemo implements OnInit {
       }
     });
   }
+
+  gradeSelectedItems() {
+    if (!this.rubricSchema || !this.rubricSelections) return;
+  
+    const selectedItems = this.rubricSchema.rubric_items
+      .filter((i: RubricItem) => this.rubricSelections[i.id]);
+  
+    if (selectedItems.length === 0) {
+      this.error = "Please select at least one rubric item.";
+      return;
+    }
+  
+    const payload = {
+      rubric_items: selectedItems,
+      submission_path: this.submissionUploadResponse?.project_path,
+      options: {
+        max_iterations: this.maxIterations,
+        timeout: 5
+      }
+    };
+  
+    this.isLoading = true;
+    this.error = "";
+    this.itemResults = {}; // create a dict { itemId → {state, score, feedback} }
+  
+    this.agentService.gradeRubricItems(payload).subscribe({
+      next: (event) => {
+        if (event.type === HttpEventType.DownloadProgress) {
+          // Optionally track streaming progress
+        }
+  
+        if (event.type === HttpEventType.Response) {
+          this.itemResults = event.body.items;
+          this.totalScore = event.body.total_score;
+          this.maxScore = event.body.max_score;
+          this.percentage = event.body.percentage;
+          this.isLoading = false;
+        }
+      },
+      error: (err) => {
+        this.error = "Grading failed: " + err.message;
+        this.isLoading = false;
+      }
+    });
+  }
+  
+  
 }
 

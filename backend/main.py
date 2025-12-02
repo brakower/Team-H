@@ -23,6 +23,7 @@ from tools import (
     check_style_tools,
     run_functional_tests,
     compute_final_grade,
+    grade_rubric_items
 )
 
 app = FastAPI(
@@ -212,6 +213,22 @@ tool_registry.register_tool(
     },
 )
 
+tool_registry.register_tool(
+    "grade_rubric_items",
+    grade_rubric_items,
+    "Grade each rubric item using the autonomous agent",
+    {
+        "type": "object",
+        "properties": {
+            "rubric": {"type": "object"},
+            "submission": {"type": "string"},
+            "options": {"type": "object"}
+        },
+        "required": ["rubric", "submission"]
+    }
+)
+
+
 # Initialize agent
 agent = ReactAgent(tool_registry, max_iterations=10)
 
@@ -287,7 +304,11 @@ async def run_agent(request: TaskRequest):
             ],
         }
     except Exception as e:
+        print("\n========== AGENT ERROR ==========")
+        print(e)
+        print("=================================\n")
         raise HTTPException(status_code=500, detail=f"Error running task: {str(e)}")
+
 
 
 @app.post("/execute")
@@ -325,27 +346,31 @@ async def upload_file(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=400, detail="Invalid JSON file")
     
-    # convert into structured RubricSchema
-    rubric_items=[]
-    total_points=0
+    # Convert uploaded rubric into structured RubricSchema
+    rubric_items = []
+    total_points = 0
 
     for key, value in data.items():
-        item = RubricItem(
-            id=key,
-            label=key.replace("_", " ").title(),
-            description=value.get("description", ""),
-            max_points=value.get("points", 0),
-            type="required_elements" if "items" in value else "general",
-            items=value.get("items", None)
+        rubric_items.append(
+            RubricItem(
+                id=key,
+                title=value.get("title", key.replace("_", " ").title()),
+                max_score=value.get("points", 0),
+                prompt_template=value.get(
+                    "prompt_template",
+                    "Evaluate this code based on rubric item '{{id}}':\n\n{{submission}}"
+                ),
+                weight=value.get("weight", 1.0),
+                description=value.get("description", ""),
+                items=value.get("items")
+            )
         )
-        rubric_items.append(item)
-        total_points += item.max_points
-        
+        total_points += value.get("points", 0)
+
     rubric_schema = RubricSchema(
         rubric_items=rubric_items,
         total_points=total_points
     )
-    
     return rubric_schema
 
 @app.post("/upload-github")
@@ -377,6 +402,19 @@ async def upload_github_repo(payload: dict = Body(...)):
         "project_path": temp_dir,
         "url": url
     }
+
+@app.post("/grade-items")
+async def grade_items(payload: dict = Body(...)):
+    rubric = payload.get("rubric")
+    submission = payload.get("submission")
+    options = payload.get("options", {})
+
+    try:
+        result = grade_rubric_items(rubric, submission, options, agent)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 if __name__ == "__main__":
     import uvicorn

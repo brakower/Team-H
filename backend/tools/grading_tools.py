@@ -1,6 +1,8 @@
+import asyncio
 import json
 import ast
 import os
+import time
 from typing import Dict, Any, Optional, List
 
 from tools.analysis_tools import (
@@ -336,3 +338,82 @@ def compute_final_grade(
     results["summary"] = summary
 
     return results
+
+
+# ---------------------------------------------------------
+# 3. Grade Rubric Items TOOL (Multi Agent Framework)
+# ---------------------------------------------------------
+
+def grade_rubric_items(rubric: dict, submission: str, options: dict, agent):
+    results = []
+    total_score = 0
+    max_total = 0
+
+    # SAFE LIMITS
+    max_iterations = options.get("max_iterations", 2)
+    timeout = options.get("timeout", 30)
+
+    for item in rubric["rubric_items"]:
+        start = time.time()
+        prompt = item["prompt_template"].replace("{{submission}}", submission)
+
+        try:
+            # SAFE: enforce timeout + iteration limit
+            response = asyncio.run(
+                safe_agent_call(
+                    agent=agent,
+                    prompt=prompt,
+                    max_iterations=max_iterations,
+                    timeout=timeout
+                )
+            )
+
+            score = extract_score(response.return_values)
+            feedback = response.log
+
+        except asyncio.TimeoutError:
+            score = 0
+            feedback = "ERROR: Timeout while grading item."
+
+        except Exception as e:
+            score = 0
+            feedback = f"ERROR: {str(e)}"
+
+        duration = time.time() - start
+
+        results.append({
+            "id": item["id"],
+            "score": score,
+            "max_score": item["max_score"],
+            "feedback": feedback,
+            "duration": duration,
+        })
+
+        total_score += score
+        max_total += item["max_score"]
+
+    return {
+        "items": results,
+        "total_score": total_score,
+        "max_score": max_total,
+        "percentage": (total_score / max_total) * 100 if max_total else 0
+    }
+
+async def safe_agent_call(agent, prompt, max_iterations, timeout):
+    """Run agent.run() with a timeout wrapper."""
+    loop = asyncio.get_event_loop()
+
+    async def run_agent():
+        return await loop.run_in_executor(
+            None,
+            lambda: agent.run(task=prompt, context={}, max_iterations=max_iterations)
+        )
+
+    # This enforces the timeout
+    return await asyncio.wait_for(run_agent(), timeout=timeout)
+
+def extract_score(output):
+    try:
+        return int(output.get("score", 0))
+    except:
+        return 0

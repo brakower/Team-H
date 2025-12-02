@@ -16,6 +16,7 @@ from tools.grading_tools import (
     check_style_tools,
     run_functional_tests,
     compute_final_grade,
+    grade_rubric_items
 )
 
 __all__ = [
