@@ -36,6 +36,15 @@
       <button class="upload-button">Choose File</button>
     </div>
   </div>
+
+  @if (rubricUploadResponse) {
+    <div class="section">
+      <h4>Uploaded Rubric (raw)</h4>
+      <div class="rubric-json">
+        <pre>{{ prettyObservation(rubricSchema) }}</pre>
+      </div>
+    </div>
+  }
   
   @if (rubricSchema) {
     <div class="section">
