@@ -340,6 +340,9 @@ class ReactAgent:
         if not available_tools:
             raise ValueError("No allowed tools available for the provided context")
 
+        # save context so execute() can reference repo_path when needed
+        self.current_context = context or {}
+
         action = self.prompt_llm(
             prompt=task,
             available_tools=available_tools,
@@ -367,7 +370,21 @@ class ReactAgent:
             return f"Error: Tool '{action.tool}' not found"
 
         try:
-            result = tool(**action.tool_input)
+            # Normalize tool input to a dict so we can inject repo_path when appropriate
+            tool_input = dict(action.tool_input or {})
+
+            # If we have a saved context with `repo_path`, and the agent didn't
+            # pass it explicitly, inject it for checking tools so they scan the
+            # whole repository (only when appropriate).
+            repo_path = None
+            if hasattr(self, 'current_context') and isinstance(self.current_context, dict):
+                repo_path = self.current_context.get('repo_path')
+
+            checking_tools = {"check_syntax", "check_required_elements", "check_documentation_tools", "check_style_tools"}
+            if action.tool in checking_tools and 'repo_path' not in tool_input and repo_path:
+                tool_input['repo_path'] = repo_path
+
+            result = tool(**tool_input)
             # If the tool returned a dict or list (structured data), return valid JSON
             # so downstream consumers (frontend/parsers) can reliably parse it.
             if isinstance(result, (dict, list)):

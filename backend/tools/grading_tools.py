@@ -102,8 +102,63 @@ def load_test_cases(test_cases_path: str) -> Optional[List[Dict[str, Any]]]:
 # 2. ATOMIC CHECKING TOOLS
 # ---------------------------------------------------------
 
-def check_syntax(code: str) -> Dict[str, Any]:
-    """Check whether the student's code has valid Python syntax."""
+def check_syntax(code: Optional[str] = None, repo_path: Optional[str] = None) -> Dict[str, Any]:
+    """Check whether the student's code has valid Python syntax.
+
+    Accepts either a `code` string, a single `code` file path, or a `repo_path`
+    directory. When `repo_path` is provided it takes precedence and all `.py`
+    files under the directory are checked.
+    """
+    # prefer repo_path when supplied
+    if repo_path:
+        code = repo_path
+    # If `code` is a directory path, walk and parse all .py files
+    if isinstance(code, str) and os.path.isdir(code):
+        repo_path = code
+        errors = []
+        files_checked = 0
+        skip_dirs = {"__pycache__", ".git", "node_modules", "venv", ".venv"}
+        for root, dirs, files in os.walk(repo_path):
+            dirs[:] = [d for d in dirs if d not in skip_dirs]
+            for fname in files:
+                if not fname.endswith('.py'):
+                    continue
+                fpath = os.path.join(root, fname)
+                # store paths relative to the repository root to avoid leaking
+                # the full absolute path in results
+                rel_path = os.path.relpath(fpath, repo_path) if repo_path else fpath
+                files_checked += 1
+                try:
+                    txt = open(fpath, 'r', encoding='utf-8').read()
+                except Exception as e:
+                    errors.append({"file": rel_path, "error": f"read error: {e}"})
+                    continue
+
+                try:
+                    ast.parse(txt)
+                except SyntaxError as e:
+                    errors.append({"file": rel_path, "error": str(e)})
+
+        return {
+            "valid": len(errors) == 0,
+            "errors": errors,
+            "files_checked": files_checked,
+        }
+
+    # If `code` is a filepath, read and parse that file
+    if isinstance(code, str) and os.path.isfile(code):
+        try:
+            txt = open(code, 'r', encoding='utf-8').read()
+        except Exception as e:
+            return {"valid": False, "errors": [{"file": code, "error": f"read error: {e}"}], "files_checked": 0}
+
+        try:
+            ast.parse(txt)
+            return {"valid": True, "errors": [], "files_checked": 1}
+        except SyntaxError as e:
+            return {"valid": False, "errors": [{"file": code, "error": str(e)}], "files_checked": 1}
+
+    # Otherwise assume `code` is a source string
     try:
         ast.parse(code)
         return {
@@ -117,28 +172,177 @@ def check_syntax(code: str) -> Dict[str, Any]:
         }
 
 
-def check_required_elements(code: str, required_items: List[str]) -> Dict[str, Any]:
+def check_required_elements(code: Optional[str] = None, required_items: Optional[List[str]] = None, repo_path: Optional[str] = None) -> Dict[str, Any]:
     """
-    Check whether required functions or classes appear in the code.
-    required_items: ["function_name", "ClassName"]
+    Check whether required functions or classes appear in the provided input.
+
+    The `code` parameter is flexible:
+    - If `code` is a path to a directory, the function will walk the directory,
+      parse only `.py` files, and aggregate found elements across files.
+    - If `code` is a path to a file, that file will be read and analyzed.
+    - Otherwise, `code` is treated as a Python source string and parsed directly.
+
+    This keeps backwards compatibility while adding a minimal repo-wide
+    `.py`-only scan when given a repository path.
     """
+
+    # Helper: aggregate results from a single AST-parsed tree
+    def _found_from_tree(tree) -> List[str]:
+        try:
+            return _extract_elements(tree)
+        except Exception:
+            return []
+
+    # prefer repo_path when supplied
+    if repo_path:
+        code = repo_path
+
+    # 1) If `code` is a directory, walk and inspect .py files only and record where items are found
+    if isinstance(code, str) and os.path.isdir(code):
+        repo_path = code
+        found_map: Dict[str, List[str]] = {r: [] for r in required_items}
+        found_set = set()
+        # skip common noisy dirs
+        skip_dirs = {"__pycache__", ".git", "node_modules", "venv", ".venv"}
+        for root, dirs, files in os.walk(repo_path):
+            dirs[:] = [d for d in dirs if d not in skip_dirs]
+            for fname in files:
+                if not fname.endswith('.py'):
+                    continue
+                fpath = os.path.join(root, fname)
+                rel = os.path.relpath(fpath, repo_path) if repo_path else fpath
+                try:
+                    with open(fpath, 'r', encoding='utf-8') as f:
+                        txt = f.read()
+                except Exception:
+                    continue
+
+                if not _is_valid_syntax(txt):
+                    continue
+
+                try:
+                    tree = ast.parse(txt)
+                except Exception:
+                    continue
+
+                for name in _found_from_tree(tree):
+                    if name in found_map:
+                        found_map[name].append(rel)
+                    found_set.add(name)
+
+        found = sorted(list(found_set))
+        missing = [r for r in required_items if r not in found]
+        # include a files mapping for where each required item was found
+        files_info = {k: v for k, v in found_map.items() if v}
+        return {"found": found, "missing": missing, "files": files_info}
+
+    # 2) If `code` is a path to a file, read and analyze that file
+    if isinstance(code, str) and os.path.isfile(code):
+        try:
+            with open(code, 'r', encoding='utf-8') as f:
+                txt = f.read()
+        except Exception:
+            return {"found": [], "missing": required_items}
+
+        if not _is_valid_syntax(txt):
+            return {"found": [], "missing": required_items}
+
+        try:
+            tree = ast.parse(txt)
+        except Exception:
+            return {"found": [], "missing": required_items}
+
+        found = _found_from_tree(tree)
+        missing = [r for r in required_items if r not in found]
+        # map found items to this single file
+        files_info = {item: [code] for item in found}
+        return {"found": found, "missing": missing, "files": files_info}
+
+    # 3) Otherwise treat `code` as a source string
     if not _is_valid_syntax(code):
         return {"found": [], "missing": required_items}
 
     tree = ast.parse(code)
-    found = _extract_elements(tree)
-
+    found = _found_from_tree(tree)
     missing = [r for r in required_items if r not in found]
 
-    return {
-        "found": found,
-        "missing": missing
-    }
+    # in-memory code string: we cannot report file paths
+    return {"found": found, "missing": missing, "files": {}}
 
 
-def check_documentation_tools(code: str) -> Dict[str, Any]:
-    """Check docstrings and comments using your helper scoring."""
-    if not _is_valid_syntax(code):
+def check_documentation_tools(code: Optional[str] = None, repo_path: Optional[str] = None) -> Dict[str, Any]:
+    """Check docstrings and comments using your helper scoring.
+
+    Accepts either a source string, a file path, or a repository directory.
+    When given a directory, only `.py` files are inspected and results are
+    aggregated. Returns an aggregate `score` plus per-file feedback mapping
+    under the `files` key.
+    """
+    # prefer repo_path when supplied
+    if repo_path:
+        code = repo_path
+
+    # If directory, iterate .py files
+    if isinstance(code, str) and os.path.isdir(code):
+        repo_path = code
+        scores = []
+        files_feedback: Dict[str, Any] = {}
+        skip_dirs = {"__pycache__", ".git", "node_modules", "venv", ".venv"}
+        for root, dirs, files in os.walk(repo_path):
+            dirs[:] = [d for d in dirs if d not in skip_dirs]
+            for fname in files:
+                if not fname.endswith('.py'):
+                    continue
+                fpath = os.path.join(root, fname)
+                rel = os.path.relpath(fpath, repo_path) if repo_path else fpath
+                try:
+                    txt = open(fpath, 'r', encoding='utf-8').read()
+                except Exception:
+                    continue
+
+                if not _is_valid_syntax(txt):
+                    files_feedback[rel] = {"score": 0.0, "feedback": "Invalid syntax"}
+                    continue
+
+                try:
+                    tree = ast.parse(txt)
+                except Exception:
+                    files_feedback[rel] = {"score": 0.0, "feedback": "Parse error"}
+                    continue
+
+                s = _check_documentation(tree, txt)
+                label = ("Well documented" if s >= 0.8 else
+                         "Partial documentation" if s >= 0.5 else
+                         "Poor documentation")
+                files_feedback[rel] = {"score": s, "feedback": label}
+                scores.append(s)
+
+        overall = (sum(scores) / len(scores)) if scores else 0.0
+        return {"score": overall, "feedback": [f"{f}: {files_feedback[f]['feedback']}" for f in files_feedback], "files": files_feedback}
+
+    # If file path, analyze single file
+    if isinstance(code, str) and os.path.isfile(code):
+        try:
+            txt = open(code, 'r', encoding='utf-8').read()
+        except Exception:
+            return {"score": 0.0, "feedback": "Could not read file", "files": {}}
+
+        if not _is_valid_syntax(txt):
+            return {"score": 0.0, "feedback": "Invalid syntax", "files": {code: {"score": 0.0, "feedback": "Invalid syntax"}}}
+
+        try:
+            tree = ast.parse(txt)
+        except Exception:
+            return {"score": 0.0, "feedback": "Parse error", "files": {code: {"score": 0.0, "feedback": "Parse error"}}}
+
+        s = _check_documentation(tree, txt)
+        label = ("Well documented" if s >= 0.8 else
+                 "Partial documentation" if s >= 0.5 else
+                 "Poor documentation")
+        return {"score": s, "feedback": label, "files": {code: {"score": s, "feedback": label}}}
+
+    # Otherwise treat input as source string
+    if code is None or not _is_valid_syntax(code):
         return {"score": 0.0, "feedback": "Invalid syntax, cannot analyze documentation"}
 
     tree = ast.parse(code)
@@ -150,19 +354,66 @@ def check_documentation_tools(code: str) -> Dict[str, Any]:
             "Well documented" if score >= 0.8 else
             "Partial documentation" if score >= 0.5 else
             "Poor documentation"
-        )
+        ),
+        "files": {}
     }
 
 
-def check_style_tools(code: str) -> Dict[str, Any]:
+def check_style_tools(code: Optional[str] = None, repo_path: Optional[str] = None) -> Dict[str, Any]:
     """Check basic style using your scoring system."""
+    # prefer repo_path when supplied
+    if repo_path:
+        code = repo_path
+
+    # If directory, compute per-file style and aggregate
+    if isinstance(code, str) and os.path.isdir(code):
+        repo_path = code
+        scores = []
+        files_feedback: Dict[str, Any] = {}
+        skip_dirs = {"__pycache__", ".git", "node_modules", "venv", ".venv"}
+        for root, dirs, files in os.walk(repo_path):
+            dirs[:] = [d for d in dirs if d not in skip_dirs]
+            for fname in files:
+                if not fname.endswith('.py'):
+                    continue
+                fpath = os.path.join(root, fname)
+                rel = os.path.relpath(fpath, repo_path) if repo_path else fpath
+                try:
+                    txt = open(fpath, 'r', encoding='utf-8').read()
+                except Exception:
+                    continue
+
+                s = _check_style(txt)
+                label = ("Good style" if s >= 0.8 else "Could improve style")
+                files_feedback[rel] = {"score": s, "feedback": label}
+                scores.append(s)
+
+        overall = (sum(scores) / len(scores)) if scores else 0.0
+        return {"score": overall, "feedback": [f"{f}: {files_feedback[f]['feedback']}" for f in files_feedback], "files": files_feedback}
+
+    # If file path
+    if isinstance(code, str) and os.path.isfile(code):
+        try:
+            txt = open(code, 'r', encoding='utf-8').read()
+        except Exception:
+            return {"score": 0.0, "feedback": "Could not read file", "files": {}}
+
+        s = _check_style(txt)
+        label = ("Good style" if s >= 0.8 else "Could improve style")
+        return {"score": s, "feedback": label, "files": {code: {"score": s, "feedback": label}}}
+
+    # Otherwise assume source string
+    if code is None:
+        return {"score": 0.0, "feedback": "No code provided", "files": {}}
+
     score = _check_style(code)
     return {
         "score": score,
         "feedback": (
             "Good style" if score >= 0.8 else
             "Could improve style"
-        )
+        ),
+        "files": {}
     }
 
 
@@ -218,7 +469,19 @@ def compute_final_grade(
             feedback = ["✓ Valid syntax"]
         else:
             earned = 0
-            feedback = [f"✗ Syntax error: {syntax.get('error')}" ] if syntax and syntax.get("error") else ["✗ Syntax check failed or not run"]
+            # Support new shape where syntax reports per-file `errors` list
+            if syntax:
+                if syntax.get("error"):
+                    feedback = [f"✗ Syntax error: {syntax.get('error')}"]
+                elif syntax.get("errors"):
+                    errs = syntax.get("errors")
+                    # show up to first 3 file errors
+                    preview = [f"{e.get('file')}: {e.get('error')}" for e in errs[:3]]
+                    feedback = ["✗ Syntax errors in files:"] + preview
+                else:
+                    feedback = ["✗ Syntax check failed or not run"]
+            else:
+                feedback = ["✗ Syntax check failed or not run"]
 
         results["breakdown"]["syntax"] = {
             "earned": earned,
@@ -242,9 +505,14 @@ def compute_final_grade(
             earned = 0
 
         feedback = []
+        files_map = required.get("files", {}) if required else {}
         for item in required_items:
             if required and item in required.get("found", []):
-                feedback.append(f"✓ Found: {item}")
+                locations = files_map.get(item)
+                if locations:
+                    feedback.append(f"✓ Found: {item} (in: {', '.join(locations)})")
+                else:
+                    feedback.append(f"✓ Found: {item}")
             else:
                 feedback.append(f"✗ Missing: {item}")
 

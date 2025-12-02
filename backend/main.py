@@ -135,8 +135,12 @@ tool_registry.register_tool(
         "type": "object",
         "properties": {
             "code": {"type": "string"},
+            "repo_path": {"type": "string"},
         },
-        "required": ["code"],
+        "anyOf": [
+            {"required": ["code"]},
+            {"required": ["repo_path"]}
+        ],
     },
 )
 
@@ -148,9 +152,13 @@ tool_registry.register_tool(
         "type": "object",
         "properties": {
             "code": {"type": "string"},
+            "repo_path": {"type": "string"},
             "required_items": {"type": "array", "items": {"type": "string"}},
         },
-        "required": ["code", "required_items"],
+        "anyOf": [
+            {"required": ["code", "required_items"]},
+            {"required": ["repo_path", "required_items"]}
+        ],
     },
 )
 
@@ -162,8 +170,12 @@ tool_registry.register_tool(
         "type": "object",
         "properties": {
             "code": {"type": "string"},
+            "repo_path": {"type": "string"},
         },
-        "required": ["code"],
+        "anyOf": [
+            {"required": ["code"]},
+            {"required": ["repo_path"]}
+        ],
     },
 )
 
@@ -175,8 +187,12 @@ tool_registry.register_tool(
         "type": "object",
         "properties": {
             "code": {"type": "string"},
+            "repo_path": {"type": "string"},
         },
-        "required": ["code"],
+        "anyOf": [
+            {"required": ["code"]},
+            {"required": ["repo_path"]}
+        ],
     },
 )
 
