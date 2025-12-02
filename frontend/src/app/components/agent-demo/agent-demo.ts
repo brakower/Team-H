@@ -38,6 +38,8 @@ export class AgentDemo implements OnInit {
   rubricSchema: any = null;
   rubricSelections: { [key: string]: boolean } = {};
   expandedRubric: { [key: string]: boolean } = {};
+  // user-set max points per rubric item
+  rubricPoints: { [key: string]: number } = {};
 
   constructor(private agentService: Agent) {}
 
@@ -74,9 +76,12 @@ export class AgentDemo implements OnInit {
           this.rubricSchema = res;
           this.rubricSelections = {};
           this.expandedRubric = {};
+          this.rubricPoints = {};
           res.rubric_items.forEach((item: RubricItem) => {
             this.expandedRubric[item.id] = false;
             this.rubricSelections[item.id] = false;  // default
+            // initialize rubricPoints from uploaded rubric's max_points (if provided)
+            this.rubricPoints[item.id] = item.max_points ?? 1;
           });
         },
         error: (err) => {
@@ -131,13 +136,26 @@ export class AgentDemo implements OnInit {
     }
 
     console.log("REPO PATH: " + JSON.stringify(this.submissionUploadResponse, null, 2));
+    // Build a normalized rubric mapping using user-provided max points for selected items
+    const rubricMapping: { [key: string]: any } = {};
+    selectedItems.forEach((item: RubricItem) => {
+      rubricMapping[item.id] = {
+        points: this.rubricPoints[item.id] ?? item.max_points ?? 1,
+        description: item.description ?? "",
+      };
+      if (item.items) rubricMapping[item.id].items = item.items;
+    });
+
     const agentTask: AgentTask = {
       task: `Grade the student submission based on the following rubric criteria: ${
         selectedItems.map(i => i.label).join(", ")
       }.`,
       context: {
+        // include both the selected ids and a full rubric mapping containing user-assigned max points
         rubric_items: selectedItems.map(item => item.id),
-        repo_path: this.submissionUploadResponse.project_path
+        selected_ids: selectedItems.map(item => item.id),
+        rubric: rubricMapping,
+        repo_path: this.submissionUploadResponse.project_path,
       } ,
       max_iterations: this.maxIterations
     };

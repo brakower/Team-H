@@ -64,8 +64,13 @@ tool_registry.register_tool(
         "type": "object",
         "properties": {
             "rubric_path": {"type": "string"},
+            "rubric": {"type": "object"},
+            "selected_ids": {"type": "array", "items": {"type": "string"}},
         },
-        "required": ["rubric_path"],
+        "anyOf": [
+            {"required": ["rubric"]},
+            {"required": ["rubric_path"]}
+        ],
     },
 )
 
@@ -260,7 +265,7 @@ async def get_tool_schema(tool_name: str):
 @app.post("/run")
 async def run_agent(request: TaskRequest):
     """Run the agent with a task."""
-    print("REQUEST BODY:", request.dict())
+    print("RUNNING REQUEST BODY:", request.dict())
     try:
         # Create new agent with custom max_iterations if provided
         current_agent = ReactAgent(tool_registry, max_iterations=request.max_iterations)
@@ -282,12 +287,13 @@ async def run_agent(request: TaskRequest):
             ],
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Error running task: {str(e)}")
 
 
 @app.post("/execute")
 async def execute_tool(request: ToolExecutionRequest):
     """Execute a specific tool directly."""
+    print("EXECUTING TOOL REQUEST BODY:", request.dict())
     tool = tool_registry.get_tool(request.tool_name)
     if tool is None:
         raise HTTPException(
@@ -298,19 +304,13 @@ async def execute_tool(request: ToolExecutionRequest):
         result = tool(**request.parameters)
         return {"tool": request.tool_name, "result": result}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Error executing tool: {str(e)}")
 
 
 @app.get("/discover")
 async def discover_tools():
     """Discover all available tools with their schemas."""
     return tool_registry.discover_tools()
-
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
 @app.post("/upload")
@@ -377,3 +377,8 @@ async def upload_github_repo(payload: dict = Body(...)):
         "project_path": temp_dir,
         "url": url
     }
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host="0.0.0.0", port=8000)

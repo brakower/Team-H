@@ -6,6 +6,7 @@ class RubricItem(BaseModel):
     label: str
     description: str
     max_points: int
+    type: Optional[str] = None
     items: Optional[List[str]] = None # for required elements or checklists
 
 class RubricSchema(BaseModel):

@@ -64,7 +64,11 @@
           @if (expandedRubric[item.id]) {
             <div class="rubric-body">
               <p>{{ item.description }}</p>
-              <p><em>{{ item.max_points }} points</em></p>
+              <p>
+                <label>Max points:
+                  <input type="number" [(ngModel)]="rubricPoints[item.id]" min="0" />
+                </label>
+              </p>
   
               @if (item.items) {
                 <ul>

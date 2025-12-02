@@ -145,9 +145,9 @@ class ReactAgent:
         self.intermediate_steps: list[AgentStep] = []
 
     def prompt_llm(self, prompt, available_tools, history, context=None):
-        print("here")
+        print("def prompt_llm in react_agent.py reached")
         openai_service = OpenAIService(client=openai_client())
-        print("next")
+        print("openai_service created in prompt_llm in react_agent.py")
         tools_json = json.dumps([tool.model_dump() for tool in available_tools], indent=2)
         context_json = json.dumps(context or {}, indent=2)  
         print(f"context: {context}")
@@ -166,7 +166,7 @@ class ReactAgent:
             # ------------------------------------------------------------
             # STRICT STEP ORDER FOR GRADING
             # ------------------------------------------------------------
-            f"When grading Python code, you MUST call tools in the EXACT following order:\n"
+            f"When grading Python code, you must call tools in the exact following order, but skip tools if they aren't specified by the user:\n"
             f"1. load_rubric\n"
             f"2. list_repo_files\n"
             f"3. load_submission\n"
@@ -269,6 +269,52 @@ class ReactAgent:
             response_model=AgentAction,
         )
         return result
+
+    def _allowed_tools_from_context(self, context: Optional[Dict[str, Any]]) -> set:
+        """Compute a set of allowed tool names based on the provided context.
+
+        This keeps the LLM from seeing tools that are not relevant to the
+        selected rubric items.
+        """
+        # default minimal tool set that are safe to expose when no context is present
+        base = {"load_rubric", "list_repo_files", "load_submission"}
+
+        if not context:
+            # if no context, allow everything (fallback)
+            return set(self.tool_registry._schemas.keys())
+
+        # Look for selection keys that the frontend provides
+        selected = set()
+        if isinstance(context.get("rubric_items"), list):
+            selected |= set(context.get("rubric_items"))
+        if isinstance(context.get("selected_ids"), list):
+            selected |= set(context.get("selected_ids"))
+        if isinstance(context.get("selectedIds"), list):
+            selected |= set(context.get("selectedIds"))
+
+        # Map rubric categories to required tool names
+        mapping = {
+            "syntax": ["check_syntax"],
+            "required_elements": ["check_required_elements"],
+            "documentation": ["check_documentation_tools"],
+            "style": ["check_style_tools"],
+            "functionality": ["load_test_cases", "run_functional_tests", "run_pytest_on_directory"],
+            # allow compute_final_grade always so agent can finish
+        }
+
+        allowed = set(base)
+
+        for key in selected:
+            tools = mapping.get(key)
+            if tools:
+                allowed.update(tools)
+
+        # Always allow compute_final_grade so agent can summarize final score
+        allowed.add("compute_final_grade")
+
+        # Ensure we only return tool names that actually exist in the registry
+        registered = set(self.tool_registry._schemas.keys())
+        return allowed & registered
     
     def plan(self, 
              task: str, 
@@ -285,21 +331,22 @@ class ReactAgent:
             The next action to take
         """
         openai_service = OpenAIService(client=openai_client())
-        available_tools = self.tool_registry.list_tools()
+
+        # Compute allowed tools from context and filter the registry
+        allowed_names = self._allowed_tools_from_context(context)
+        all_tools = self.tool_registry.list_tools()
+        available_tools = [t for t in all_tools if t.name in allowed_names]
 
         if not available_tools:
-            raise ValueError("No tools available")
-
-        # Use the first available tool as a simple strategy (currently only add implemented)
-        # This would be where we call OpenAI 
+            raise ValueError("No allowed tools available for the provided context")
 
         action = self.prompt_llm(
             prompt=task,
             available_tools=available_tools,
             history=history or [],
-            context=context
+            context=context,
         )
-        
+
         if not isinstance(action, AgentAction):
             raise ValueError("The LLM did not return a valid AgentAction.")
 

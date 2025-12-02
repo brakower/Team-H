@@ -11,10 +11,7 @@ export interface ToolSchema {
 
 export interface AgentTask {
   task: string;
-  context: {
-    rubric_items: string[];      
-    repo_path: string;          
-  };
+  context: any;
   max_iterations?: number;
 }
 

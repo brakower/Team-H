@@ -15,13 +15,59 @@ from tools.analysis_tools import (
 # 1. FILE LOADING TOOLS
 # ---------------------------------------------------------
 
-def load_rubric(rubric_path: str) -> Dict[str, Any]:
-    """Load a grading rubric from a JSON file."""
+def load_rubric(rubric: Optional[Dict[str, Any]] = None, rubric_path: Optional[str] = None, selected_ids: Optional[List[str]] = None) -> Dict[str, Any]:
+    """Load a grading rubric.
 
-    ## TEMP: rubric path is currently hard coded, this should be changed
-    rubric_path = '/workspaces/Team-H/examples/student_example/rubric.json'
-    with open(rubric_path, "r") as f:
-        return json.load(f)
+    This function supports two modes:
+    - `rubric_path` (str): load a JSON file from disk (legacy behavior)
+    - `rubric` (dict): use a rubric JSON object uploaded by the frontend
+
+    If `rubric` is provided in the uploaded form used by the frontend (contains
+    a top-level `rubric_items` list), this function will convert that list into
+    a mapping keyed by item id. If `selected_ids` is provided, only those items
+    will be returned.
+    """
+
+    data = None
+    # 1) Prefer an in-memory rubric dict if provided
+    if rubric is not None:
+        data = rubric
+    # 2) Fall back to loading from a path if provided
+    elif rubric_path:
+        if not os.path.exists(rubric_path):
+            raise FileNotFoundError(f"Rubric file not found: {rubric_path}")
+        with open(rubric_path, "r") as f:
+            data = json.load(f)
+    else:
+        raise ValueError("Either `rubric` (dict) or `rubric_path` (str) must be provided")
+
+    # If the uploaded rubric follows the frontend schema (RubricSchema), it will
+    # contain `rubric_items` as a list of items with id/label/description/max_points
+    if isinstance(data, dict) and "rubric_items" in data:
+        out: Dict[str, Any] = {}
+        for item in data["rubric_items"]:
+            item_id = item.get("id")
+            if not item_id:
+                continue
+            if selected_ids and item_id not in selected_ids:
+                continue
+            entry: Dict[str, Any] = {
+                "points": item.get("max_points", item.get("points", 0)),
+                "description": item.get("description", ""),
+            }
+            if item.get("items") is not None:
+                entry["items"] = item.get("items")
+            out[item_id] = entry
+        return out
+
+    # If data is already a mapping of categories -> config, optionally filter keys
+    if isinstance(data, dict):
+        if selected_ids:
+            return {k: v for k, v in data.items() if k in selected_ids}
+        return data
+
+    # Unknown format
+    raise ValueError("Unsupported rubric format")
 
 def list_repo_files(repo_path: str) -> dict:
     import os
@@ -144,11 +190,11 @@ def run_functional_tests(code: str, test_cases: Optional[List[Dict[str, Any]]]) 
 
 def compute_final_grade(
     rubric: Dict[str, Any],
-    syntax: Dict[str, Any],
-    required: Dict[str, Any],
-    documentation: Dict[str, Any],
-    style: Dict[str, Any],
-    tests: Dict[str, Any],
+    syntax: Optional[Dict[str, Any]] = None,
+    required: Optional[Dict[str, Any]] = None,
+    documentation: Optional[Dict[str, Any]] = None,
+    style: Optional[Dict[str, Any]] = None,
+    tests: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Combine all partial results into a rubric-based final grade.
@@ -162,32 +208,42 @@ def compute_final_grade(
         "percentage": 0,
     }
 
-    # 1. Syntax
+    # 1. Syntax — only compute if syntax is present in rubric
     if "syntax" in rubric:
-        pts = rubric["syntax"]["points"]
+        pts = rubric["syntax"].get("points", rubric["syntax"].get("max_points", 0))
         results["max_score"] += pts
 
-        earned = pts if syntax["valid"] else 0
+        if syntax and syntax.get("valid"):
+            earned = pts
+            feedback = ["✓ Valid syntax"]
+        else:
+            earned = 0
+            feedback = [f"✗ Syntax error: {syntax.get('error')}" ] if syntax and syntax.get("error") else ["✗ Syntax check failed or not run"]
+
         results["breakdown"]["syntax"] = {
             "earned": earned,
             "possible": pts,
-            "feedback": ["✓ Valid syntax"] if syntax["valid"] else [f"✗ Syntax error: {syntax['error']}"]
+            "feedback": feedback,
         }
         results["total_score"] += earned
 
     # 2. Required elements
     if "required_elements" in rubric:
-        pts = rubric["required_elements"]["points"]
+        pts = rubric["required_elements"].get("points", rubric["required_elements"].get("max_points", 0))
         results["max_score"] += pts
 
-        required_items = rubric["required_elements"]["items"]
+        required_items = rubric["required_elements"].get("items", [])
         per_item = pts / len(required_items) if required_items else 0
 
-        earned = per_item * (len(required_items) - len(required["missing"]))
+        if required:
+            earned = per_item * (len(required_items) - len(required.get("missing", [])))
+        else:
+            # if required check wasn't run, treat as 0 earned
+            earned = 0
 
         feedback = []
         for item in required_items:
-            if item in required["found"]:
+            if required and item in required.get("found", []):
                 feedback.append(f"✓ Found: {item}")
             else:
                 feedback.append(f"✗ Missing: {item}")
@@ -195,50 +251,60 @@ def compute_final_grade(
         results["breakdown"]["required_elements"] = {
             "earned": earned,
             "possible": pts,
-            "feedback": feedback
+            "feedback": feedback,
         }
         results["total_score"] += earned
 
     # 3. Documentation
     if "documentation" in rubric:
-        pts = rubric["documentation"]["points"]
+        pts = rubric["documentation"].get("points", rubric["documentation"].get("max_points", 0))
         results["max_score"] += pts
 
-        earned = pts * documentation["score"]
+        if documentation and "score" in documentation:
+            earned = pts * documentation.get("score", 0)
+            feedback = [documentation.get("feedback", "")] if documentation.get("feedback") else []
+        else:
+            earned = 0
+            feedback = ["Documentation check skipped or not run"]
 
         results["breakdown"]["documentation"] = {
             "earned": earned,
             "possible": pts,
-            "feedback": [documentation["feedback"]]
+            "feedback": feedback,
         }
         results["total_score"] += earned
 
     # 4. Style
     if "style" in rubric:
-        pts = rubric["style"]["points"]
+        pts = rubric["style"].get("points", rubric["style"].get("max_points", 0))
         results["max_score"] += pts
 
-        earned = pts * style["score"]
+        if style and "score" in style:
+            earned = pts * style.get("score", 0)
+            feedback = [style.get("feedback", "")] if style.get("feedback") else []
+        else:
+            earned = 0
+            feedback = ["Style check skipped or not run"]
 
         results["breakdown"]["style"] = {
             "earned": earned,
             "possible": pts,
-            "feedback": [style["feedback"]]
+            "feedback": feedback,
         }
         results["total_score"] += earned
 
-    # 5. Test Cases
-    if "functionality" in rubric and tests["total"] > 0:
-        pts = rubric["functionality"]["points"]
+    # 5. Test Cases / Functionality
+    if "functionality" in rubric and tests and tests.get("total", 0) > 0:
+        pts = rubric["functionality"].get("points", rubric["functionality"].get("max_points", 0))
         results["max_score"] += pts
 
-        pass_ratio = tests["passed"] / tests["total"]
+        pass_ratio = tests.get("passed", 0) / tests.get("total", 1)
         earned = pts * pass_ratio
 
         results["breakdown"]["functionality"] = {
             "earned": earned,
             "possible": pts,
-            "feedback": [f"Passed {tests['passed']} / {tests['total']} tests"] + tests["feedback"]
+            "feedback": [f"Passed {tests.get('passed',0)} / {tests.get('total',0)} tests"] + tests.get("feedback", []),
         }
         results["total_score"] += earned
 
