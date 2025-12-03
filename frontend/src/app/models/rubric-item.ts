@@ -2,7 +2,7 @@ export interface RubricItem {
   id: string;
 
   // Display name
-  label: string;              // e.g. "Syntax"
+  title: string;              // e.g. "Syntax"
   
   // Description text
   description?: string;
@@ -10,9 +10,10 @@ export interface RubricItem {
   // Maximum points assigned
   max_points: number;
 
-  // Optional list of required function names
-  items?: string[];
-
   // Optional type info
   type?: string;
+
+  items?: string[];
 }
+
+

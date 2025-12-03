@@ -354,15 +354,10 @@ async def upload_file(file: UploadFile = File(...)):
         rubric_items.append(
             RubricItem(
                 id=key,
-                title=value.get("title", key.replace("_", " ").title()),
-                max_score=value.get("points", 0),
-                prompt_template=value.get(
-                    "prompt_template",
-                    "Evaluate this code based on rubric item '{{id}}':\n\n{{submission}}"
-                ),
-                weight=value.get("weight", 1.0),
+                label=value.get("title", key.replace("_", " ").title()),
                 description=value.get("description", ""),
-                items=value.get("items")
+                max_points=value.get("points", value.get("max_points", 1)),
+                items=value.get("items", None)
             )
         )
         total_points += value.get("points", 0)
@@ -405,14 +400,68 @@ async def upload_github_repo(payload: dict = Body(...)):
 
 @app.post("/grade-items")
 async def grade_items(payload: dict = Body(...)):
-    rubric = payload.get("rubric")
-    submission = payload.get("submission")
+    """
+    Grade rubric items using the multi-agent framework.
+    Expects:
+      {
+         "rubric_items": [...],
+         "submission_path": "/tmp/tmpxxxxxx",
+         "options": { "max_iterations": 10, "timeout": 5 }
+      }
+    """
+    print("\n========================")
+    print("GRADE ITEMS PAYLOAD:", payload)
+    print("========================\n")
+
+    rubric_items = payload.get("rubric_items")
+    submission_path = payload.get("submission_path")
     options = payload.get("options", {})
 
+    if not rubric_items:
+        raise HTTPException(status_code=400, detail="Missing rubric_items")
+
+    if not submission_path:
+        raise HTTPException(status_code=400, detail="Missing submission_path")
+
+    # ---- Load submission code from repo directory ----
+    if not os.path.exists(submission_path):
+        raise HTTPException(status_code=400, detail=f"Submission path not found: {submission_path}")
+
+    py_files = [f for f in os.listdir(submission_path) if f.endswith(".py")]
+    if not py_files:
+        raise HTTPException(status_code=400, detail="No .py file found in submission directory")
+
+    submission_file = os.path.join(submission_path, py_files[0])
     try:
-        result = grade_rubric_items(rubric, submission, options, agent)
-        return result
+        with open(submission_file, "r") as f:
+            submission_code = f.read()
     except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read submission file: {str(e)}")
+
+    print("Loaded submission file:", submission_file)
+
+    # ---- Normalize rubric items ----
+    for item in rubric_items:
+
+        # Ensure safe defaults for required multi-agent fields
+        item.setdefault("prompt_template",
+                        f"Grade the submission for rubric item '{item.get('id')}'. "
+                        f"Description: {item.get('description','')}\n\nSubmission:\n{{submission}}")
+
+        item.setdefault("weight", 1.0)
+
+    # ---- Call multi-agent grader ----
+    try:
+        result = await grade_rubric_items(
+            rubric_items=rubric_items,
+            submission_code=submission_code,
+            options=options,
+            agent=agent
+        )
+        return result
+
+    except Exception as e:
+        print("GRADE ITEMS ERROR:", e)
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -3,10 +3,14 @@ from pydantic import BaseModel
 
 class RubricItem(BaseModel):
     id: str
-    title: str
-    max_score: int
-    prompt_template: str
-    weight: Optional[int]
+    label: str
+    description: str
+    max_points: int
+    type: Optional[str] = None
+    items: Optional[List[str]] = None # for required elements or checklists
+
+
+
 
 class RubricSchema(BaseModel):
     rubric_items: List[RubricItem]

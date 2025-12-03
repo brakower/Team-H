@@ -206,14 +206,14 @@ def compute_final_grade(
     results = {
         "breakdown": {},
         "total_score": 0,
-        "max_score": 0,
+        "max_points": 0,
         "percentage": 0,
     }
 
     # 1. Syntax — only compute if syntax is present in rubric
     if "syntax" in rubric:
         pts = rubric["syntax"].get("points", rubric["syntax"].get("max_points", 0))
-        results["max_score"] += pts
+        results["max_points"] += pts
 
         if syntax and syntax.get("valid"):
             earned = pts
@@ -232,7 +232,7 @@ def compute_final_grade(
     # 2. Required elements
     if "required_elements" in rubric:
         pts = rubric["required_elements"].get("points", rubric["required_elements"].get("max_points", 0))
-        results["max_score"] += pts
+        results["max_points"] += pts
 
         required_items = rubric["required_elements"].get("items", [])
         per_item = pts / len(required_items) if required_items else 0
@@ -260,7 +260,7 @@ def compute_final_grade(
     # 3. Documentation
     if "documentation" in rubric:
         pts = rubric["documentation"].get("points", rubric["documentation"].get("max_points", 0))
-        results["max_score"] += pts
+        results["max_points"] += pts
 
         if documentation and "score" in documentation:
             earned = pts * documentation.get("score", 0)
@@ -279,7 +279,7 @@ def compute_final_grade(
     # 4. Style
     if "style" in rubric:
         pts = rubric["style"].get("points", rubric["style"].get("max_points", 0))
-        results["max_score"] += pts
+        results["max_points"] += pts
 
         if style and "score" in style:
             earned = pts * style.get("score", 0)
@@ -298,7 +298,7 @@ def compute_final_grade(
     # 5. Test Cases / Functionality
     if "functionality" in rubric and tests and tests.get("total", 0) > 0:
         pts = rubric["functionality"].get("points", rubric["functionality"].get("max_points", 0))
-        results["max_score"] += pts
+        results["max_points"] += pts
 
         pass_ratio = tests.get("passed", 0) / tests.get("total", 1)
         earned = pts * pass_ratio
@@ -321,13 +321,13 @@ def compute_final_grade(
         category["earned"] = round(category["earned"], 2)
 
     # Generate overall feedback
-    percentage = (results["total_score"] / results["max_score"] * 100) if results["max_score"] > 0 else 0
+    percentage = (results["total_score"] / results["max_points"] * 100) if results["max_points"] > 0 else 0
     results["percentage"] = round(percentage, 1)
 
     # Human-friendly summary for frontend display
     title = rubric.get("title") or rubric.get("name") or "Assignment"
-    if results["max_score"] > 0:
-        summary = f"{title}: {results['total_score']} / {round(results['max_score'],2)} pts ({results['percentage']}%)"
+    if results["max_points"] > 0:
+        summary = f"{title}: {results['total_score']} / {round(results['max_points'],2)} pts ({results['percentage']}%)"
     else:
         summary = f"{title}: No graded items"
 
@@ -344,28 +344,35 @@ def compute_final_grade(
 # 3. Grade Rubric Items TOOL (Multi Agent Framework)
 # ---------------------------------------------------------
 
-def grade_rubric_items(rubric: dict, submission: str, options: dict, agent):
+async def grade_rubric_items(rubric_items: list, submission_code: str, options: dict, agent):
     results = []
     total_score = 0
     max_total = 0
 
-    # SAFE LIMITS
     max_iterations = options.get("max_iterations", 2)
     timeout = options.get("timeout", 30)
 
-    for item in rubric["rubric_items"]:
+    for item in rubric_items:
         start = time.time()
-        prompt = item["prompt_template"].replace("{{submission}}", submission)
+
+        # Safe value extraction
+        item_id = item.get("id")
+        max_points = item.get("max_points", 0)
+
+        # Build prompt safely
+        prompt_template = item.get("prompt_template") or (
+            f"Grade the submission for the criterion '{item_id}'. "
+            f"Description: {item.get('description', '')}\n\nSubmission:\n{{submission}}"
+        )
+        prompt = prompt_template.replace("{{submission}}", submission_code)
 
         try:
-            # SAFE: enforce timeout + iteration limit
-            response = asyncio.run(
-                safe_agent_call(
-                    agent=agent,
-                    prompt=prompt,
-                    max_iterations=max_iterations,
-                    timeout=timeout
-                )
+            # Safe async call
+            response = await safe_agent_call(
+                agent=agent,
+                prompt=prompt,
+                max_iterations=max_iterations,
+                timeout=timeout
             )
 
             score = extract_score(response.return_values)
@@ -382,21 +389,21 @@ def grade_rubric_items(rubric: dict, submission: str, options: dict, agent):
         duration = time.time() - start
 
         results.append({
-            "id": item["id"],
+            "id": item_id,
             "score": score,
-            "max_score": item["max_score"],
+            "max_points": max_points,
             "feedback": feedback,
             "duration": duration,
         })
 
         total_score += score
-        max_total += item["max_score"]
+        max_total += max_points
 
     return {
         "items": results,
         "total_score": total_score,
-        "max_score": max_total,
-        "percentage": (total_score / max_total) * 100 if max_total else 0
+        "max_points": max_total,
+        "percentage": (total_score / max_total * 100) if max_total else 0
     }
 
 async def safe_agent_call(agent, prompt, max_iterations, timeout):

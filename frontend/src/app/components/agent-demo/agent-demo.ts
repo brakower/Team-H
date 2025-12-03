@@ -155,7 +155,7 @@ export class AgentDemo implements OnInit {
 
     const agentTask: AgentTask = {
       task: `Grade the student submission based on the following rubric criteria: ${
-        selectedItems.map(i => i.label).join(", ")
+        selectedItems.map(i => i.title).join(", ")
       }.`,
       context: {
         // include both the selected ids and a full rubric mapping containing user-assigned max points
