@@ -9,6 +9,9 @@ class RubricItem(BaseModel):
     type: Optional[str] = None
     items: Optional[List[str]] = None # for required elements or checklists
 
+
+
+
 class RubricSchema(BaseModel):
     rubric_items: List[RubricItem]
     total_points: int

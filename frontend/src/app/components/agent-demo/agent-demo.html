@@ -233,6 +233,56 @@
       </div>
     </div>
   </div>
+
+  <!-- ======================================= -->
+  <!--        MULTI-ITEM GRADING SECTION       -->
+  <!-- ======================================= -->
+  <div class="section">
+    <h2>Grade Selected Items</h2>
+
+    <button 
+      class="upload-button"
+      (click)="gradeSelectedItems()"
+      [disabled]="isLoading || !anySelected() || !submissionUploadResponse">
+      {{ isLoading ? 'Grading...' : 'Grade Items' }}
+    </button>
+
+    <!-- Global loader -->
+    <div *ngIf="isLoading" class="loading-spinner">
+      Grading items...
+    </div>
+
+    <!-- Per-item results -->
+    <div *ngIf="itemResults">
+      <h3>Results</h3>
+
+      <div *ngFor="let item of rubricSchema?.rubric_items">
+        <div *ngIf="rubricSelections[item.id]" class="item-card">
+          <h4>{{ item.label }} ({{ rubricPoints[item.id] }} pts)</h4>
+
+          <!-- Item still grading -->
+          <div *ngIf="!itemResults[item.id] && isLoading">
+            <p>Grading {{ item.label }}…</p>
+            <div class="spinner"></div>
+          </div>
+
+          <!-- Item finished -->
+          <div *ngIf="itemResults[item.id] && !isLoading">
+            <p><b>Score:</b> {{ itemResults[item.id].score }} / {{ itemResults[item.id].max_score }}</p>
+            <pre>{{ itemResults[item.id].feedback }}</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- Aggregated total -->
+      <div *ngIf="percentage !== null" class="overall-score">
+        <h3>Total: {{ totalScore }} / {{ maxScore }} pts ({{ percentage | number:'1.0-0' }}%)</h3>
+      </div>
+
+    </div>
+  </div>
+
+
 </div>
 
 

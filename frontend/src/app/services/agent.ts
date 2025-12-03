@@ -71,5 +71,10 @@ export class Agent {
   uploadGithubRepo(url: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/upload-github`, { url });
   }
+
+  gradeRubricItems(payload: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/grade-items`, payload);
+  }
+  
 }
 
