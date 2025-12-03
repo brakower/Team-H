@@ -325,3 +325,65 @@ button:disabled {
 .rubric-body p {
   margin: 5px 0;
 }
+
+/* --- UPLOAD SECTION MAKEOVER --- */
+
+.upload-section {
+  padding: 20px 0;
+  border-top: 1px solid #e5e7eb;
+}
+
+.upload-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0b2b4a;
+  margin-bottom: 12px;
+}
+
+/* Container box */
+.pretty-upload-box {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  max-width: 520px;
+  background: #ffffff;
+  padding: 14px 16px;
+  border: 1px solid #d9dfe7;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06);
+}
+
+/* Input field */
+.upload-input-field {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #cfd7df;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.upload-input-field:focus {
+  border-color: #007bff;
+}
+
+/* Button already styled but we refine spacing */
+.upload-button {
+  padding: 10px 16px !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+
+/* Status message */
+.success-status {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: #e8f6ed;
+  border: 1px solid #c9ebd6;
+  border-radius: 6px;
+  color: #0b512b;
+  font-size: 0.95rem;
+  display: inline-block;
+}
