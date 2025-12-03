@@ -36,15 +36,6 @@
       <button class="upload-button">Choose File</button>
     </div>
   </div>
-
-  @if (rubricUploadResponse) {
-    <div class="section">
-      <h4>Uploaded Rubric (raw)</h4>
-      <div class="rubric-json">
-        <pre>{{ prettyObservation(rubricSchema) }}</pre>
-      </div>
-    </div>
-  }
   
   @if (rubricSchema) {
     <div class="section">
@@ -72,12 +63,8 @@
           <!-- Body (hidden unless expanded) -->
           @if (expandedRubric[item.id]) {
             <div class="rubric-body">
+              <p>Maximum Points: {{ item.max_points }}</p>
               <p>{{ item.description }}</p>
-              <p>
-                <label>Max points:
-                  <input type="number" [(ngModel)]="rubricPoints[item.id]" min="0" />
-                </label>
-              </p>
   
               @if (item.items) {
                 <ul>
@@ -93,17 +80,25 @@
     </div>
 
     <div class="section upload-section">
-      <h3>Upload Submission</h3>
+      <h3 class="upload-title">Upload Submission</h3>
     
-      <div class="upload-box">
-        <input type="url" [(ngModel)]="submissionRepoUrl" placeholder="https://github.com/username/repo">
-        <button class="upload-button" (click)="submitGithubUrl()">Load Repository</button>
+      <div class="upload-box pretty-upload-box">
+        <input 
+          type="url" 
+          [(ngModel)]="submissionRepoUrl" 
+          placeholder="https://github.com/username/repo"
+          class="upload-input-field"
+        >
+    
+        <button class="upload-button" (click)="submitGithubUrl()">
+          Load Repository
+        </button>
       </div>
     
       @if (submissionUploadResponse) {
-        <div class="upload-status">
+        <div class="upload-status success-status">
           <strong>Repository Cloned:</strong>
-          {{ submissionUploadResponse.project_path }}
+          <span>{{ submissionUploadResponse.project_path }}</span>
         </div>
       }
     </div>
