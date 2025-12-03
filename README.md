@@ -163,7 +163,7 @@ For full integration testing, run both servers simultaneously:
 **Terminal 1 (Backend):**
 ```bash
 cd backend
-poetry run uvicorn main:app --reload --host 0.0.0.0 --port 8000
+poetry run python main.py
 ```
 
 **Terminal 2 (Frontend):**
