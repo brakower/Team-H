@@ -1,317 +1,234 @@
+````markdown name=README.md url=https://github.com/brakower/Team-H/blob/98e944900f76d722926fa692aafeca5c6eca82b3/README.md
+```markdown
 # Team-H
 
-A modern full-stack application featuring an Angular frontend and Python backend with a React Agent implementation.
+A modern full-stack application that demonstrates a Python FastAPI backend (including a ReAct-style "React Agent" and dynamic tool system) and an Angular frontend for interactive demos.
 
-## Project Structure
+This README summarizes project structure, setup, usage, API examples, testing instructions, and the project goals and user stories for COMP423-style automated grading.
 
-```
+---
+
+## Table of contents
+
+- Project structure
+- About the project
+- User stories
+- Features
+- Prerequisites
+- Quick start (devcontainer / manual)
+- Running the backend
+- Running the frontend
+- API examples
+- Testing
+- Contributing
+- License & acknowledgements
+
+---
+
+## Project structure
+
 Team-H/
-├── .devcontainer/          # Development container configuration
-│   ├── devcontainer.json   # VS Code dev container settings
-│   └── Dockerfile          # Container image with Python 3.11, Node.js, npm, and Poetry
-├── backend/                # Python backend with React Agent
-│   ├── backend/            # Main backend package
-│   │   ├── agent/          # React Agent implementation
-│   │   └── tools/          # Tool implementations
-│   ├── tests/              # Unit tests
-│   ├── main.py             # FastAPI application
-│   ├── pyproject.toml      # Poetry configuration
-│   └── poetry.lock         # Poetry lock file
-└── frontend/               # Angular frontend
-    ├── src/                # Source files
-    │   ├── app/            # Angular application
-    │   │   ├── components/ # UI components
-    │   │   └── services/   # Services for backend integration
-    │   └── ...
-    ├── angular.json        # Angular configuration
-    └── package.json        # npm dependencies
-```
+├── .devcontainer/          # VS Code devcontainer configuration  
+├── backend/                # Python backend (FastAPI + React Agent)  
+│   ├── backend/            # main backend package (agent, tools, models)  
+│   ├── tests/              # unit tests  
+│   ├── main.py             # FastAPI application entrypoint  
+│   └── pyproject.toml      # Poetry configuration  
+└── frontend/               # Angular frontend (demo UI & services)
 
-## Backend Features
+---
 
-The Python backend includes:
+## About the project
 
-- **React Agent**: An advanced agent system implementing the ReAct (Reasoning and Acting) pattern
-  - Main agent loop with iterative reasoning
-  - Automatic tool discovery mechanism
-  - JSON Schema annotations for all tools
-  - Comprehensive unit tests
+Modern AI Agents are capable of carrying out step-by-step tasks that call out to "tools" — functions written by software engineers — to carry out time-intensive or specialized tasks. Throughout this project, we develop an agent system (integrating with the OpenAI API) that can investigate a student's project code in a project-based learning course like COMP423.
 
-- **Tool System**: 
-  - Tool registry for dynamic tool management
-  - Built-in tools
-  - Auto-generated parameter schemas
-  
-- **FastAPI REST API**:
-  - `/tools` - List all available tools
-  - `/tools/{tool_name}` - Get tool schema
-  - `/run` - Run the agent with a task
-  - `/execute` - Execute a specific tool
-  - `/discover` - Discover all tools with schemas
-  - `/health` - Health check endpoint
+What does it mean to "investigate"?
+- The agent examines repository data (commits, tests, code structure, configuration) to look for evidence of rubric items and qualities expected from assignments. Examples: verifying test coverage, checking coding standards for FastAPI route definitions, inspecting commit history for appropriate incremental work, and verifying presence/quality of documentation.
 
-- **Dependencies** (managed with Poetry):
-  - FastAPI for REST API
-  - Pydantic for data validation
-  - LangChain for agent framework
-  - Pytest for testing
+Primary goals:
+- Automate routine checks TAs currently perform so TAs can focus on higher-level feedback and guidance.
+- Produce transparent logs/explanations for each rubric item so instructors and students can see why the agent graded a particular way.
+- Make the tool adaptable and reusable across many CS courses with the goal of long-term adoption (e.g., becoming an official CSXL-supported tool).
 
-## Frontend Features
+---
 
-The Angular frontend includes:
+## Features
 
-- **Agent Demo Component**: Interactive UI for testing the React Agent
-- **Agent Service**: TypeScript service for backend communication
-- **Modern Angular**: Using latest Angular features with standalone components
-- **HTTP Client**: Configured for backend API integration
-- **Responsive Design**: Clean, modern UI with CSS styling
+Backend
+- ReAct-style "React Agent" loop (Thought → Action → Observation)
+- Tool registry with automatic JSON Schema generation for tool parameters
+- FastAPI REST API exposing endpoints to list/discover tools and run the agent
+- Pydantic models and comprehensive unit tests
+- Integration points to add rubric parsers and batch grading workflows
+
+Frontend
+- Angular demo UI showing agent interactions
+- TypeScript service with typed endpoints for backend communication
+- Responsive components and reactive data flow (RxJS)
+- Components to upload rubrics/github repositories and trigger batch grading (demo)
+
+---
 
 ## Prerequisites
 
-- Python 3.11 or higher
-- Node.js 20.x or higher
-- npm
-- Poetry (Python dependency manager)
+- Python 3.11+
+- Node.js 20.x+ and npm
+- Poetry (for Python dependency management)
+- (Optional) VS Code with Dev Containers extension for reproducible development environment
+- OpenAI API key (for agent LLM integration) — set via environment variable or secrets manager during deployment. Please reach out to developers or client for API keys.
 
-## Setup Instructions
+---
 
-### Option 1: Using Dev Container (Recommended)
+## Quick start (recommended): VS Code devcontainer
 
-1. Open the project in VS Code
-2. Install the "Dev Containers" extension
-3. Press `F1` and select "Dev Containers: Reopen in Container"
-4. The container will automatically set up Python 3.11, Node.js, npm, and Poetry
-5. Dependencies will be installed automatically via the `postCreateCommand`
+1. Install the "Dev Containers" extension in VS Code.
+2. Open the repository in VS Code.
+3. Command Palette → "Dev Containers: Reopen in Container".
+4. The container will build and run the post-create commands to install Python, Node, and dependencies.
 
-### Option 2: Manual Setup
+This option gives a reproducible environment (Python 3.11, Node.js, npm, Poetry). If any errors arise related to poetry not finding a backend package, please note this is a further issue to be addressed in development. You may continue with the demo and development without issues despite this warning.
 
-#### Backend Setup
+---
 
-1. Navigate to the backend directory:
-   ```bash
-   cd backend
-   ```
+## Manual setup
 
-2. Install Poetry if not already installed:
+Backend
+1. cd backend
+2. Install Poetry if needed:
    ```bash
    curl -sSL https://install.python-poetry.org | python3 -
    # or
    pip install poetry
    ```
-
 3. Install dependencies:
    ```bash
    poetry install
    ```
-
 4. Activate the virtual environment:
    ```bash
    poetry shell
    ```
-
-#### Frontend Setup
-
-1. Navigate to the frontend directory:
+5. Configure environment variables (example):
    ```bash
-   cd frontend
+   export OPENAI_API_KEY="sk-..."
+   export FASTAPI_ENV=development
    ```
 
-2. Install dependencies:
+Frontend
+1. cd frontend
+2. Install npm packages:
    ```bash
    npm install
    ```
 
-## Usage Instructions
+---
 
-### Running the Backend
+## Run the services
 
-1. Navigate to the backend directory:
-   ```bash
-   cd backend
-   ```
-
-2. Run the FastAPI server:
-   ```bash
-   poetry run python main.py
-   # or using uvicorn directly
-   poetry run uvicorn main:app --reload --host 0.0.0.0 --port 8000
-   ```
-
-3. The API will be available at `http://localhost:8000`
-4. API documentation available at `http://localhost:8000/docs`
-
-### Running the Frontend
-
-1. Navigate to the frontend directory:
-   ```bash
-   cd frontend
-   ```
-
-2. Start the development server:
-   ```bash
-   npm start
-   # or
-   ng serve
-   ```
-
-3. Open your browser and navigate to `http://localhost:4200`
-
-### Running Both Together
-
-For full integration testing, run both servers simultaneously:
-
-**Terminal 1 (Backend):**
+Backend (development)
 ```bash
 cd backend
+# with poetry
+poetry run uvicorn main:app --reload --host 0.0.0.0 --port 8000
+# or
 poetry run python main.py
 ```
+API available at: http://localhost:8000  
+Interactive docs (OpenAPI/Swagger): http://localhost:8000/docs
 
-**Terminal 2 (Frontend):**
+Frontend (development)
 ```bash
 cd frontend
-ng serve
+npm start
+# or
+ng serve --host 0.0.0.0 --port 4200
 ```
+Open: http://localhost:4200
 
-Access the application at `http://localhost:4200`, which will communicate with the backend at `http://localhost:8000`.
+Run both simultaneously (two terminals): backend on 8000, frontend on 4200.
 
-## Testing Instructions
+---
 
-### Backend Tests
+## API — Common endpoints
 
-Run all tests:
-```bash
-cd backend
-poetry run pytest
-```
+- GET /tools — list available tools
+- GET /tools/{tool_name} — get schema/metadata for a tool
+- POST /execute — execute a specific tool (body: tool_name + parameters)
+- POST /run — run the agent for a given task (body: task, optional max_iterations)
+- POST /grade/batch — (example) run batch grading for many submissions using a rubric
+- GET /discover — returns discovered tools and their schemas
+- GET /health — simple health check
 
-Run tests with verbose output:
-```bash
-poetry run pytest -v
-```
-
-Run tests with coverage:
-```bash
-poetry run pytest --cov=backend tests/
-```
-
-Run specific test file:
-```bash
-poetry run pytest tests/test_agent.py -v
-```
-
-### Test Coverage
-
-The backend includes comprehensive unit tests:
-- **test_agent.py**: Tests for React Agent, ToolRegistry, and data models
-- **test_tools.py**: Tests for all tool implementations
-- **test_api.py**: Tests for FastAPI endpoints
-
-### Frontend Tests
-
-```bash
-cd frontend
-npm test
-```
-
-## API Examples
-
-### List Available Tools
+Example: list tools
 ```bash
 curl http://localhost:8000/tools
 ```
 
-### Execute a Tool
+Example: execute a tool (calculator)
 ```bash
 curl -X POST http://localhost:8000/execute \
   -H "Content-Type: application/json" \
   -d '{
     "tool_name": "calculator",
-    "parameters": {
-      "operation": "add",
-      "a": 5,
-      "b": 3
-    }
+    "parameters": {"operation": "add", "a": 5, "b": 3}
   }'
 ```
 
-### Run Agent Task
+Example: run the agent
 ```bash
 curl -X POST http://localhost:8000/run \
   -H "Content-Type: application/json" \
-  -d '{
-    "task": "perform calculation",
-    "max_iterations": 5
-  }'
+  -d '{"task": "perform calculation", "max_iterations": 5}'
 ```
 
-## Frontend-Backend Integration
+---
 
-The application demonstrates full-stack integration:
+## Testing
 
-1. **Angular Service** (`agent.ts`): Provides typed methods for all backend endpoints
-2. **HTTP Communication**: Uses Angular's HttpClient with proper CORS configuration
-3. **Data Models**: TypeScript interfaces matching backend Pydantic models
-4. **Error Handling**: Comprehensive error handling on both frontend and backend
-5. **Real-time Updates**: Interactive UI updates based on backend responses
+Backend
+```bash
+cd backend
+poetry run pytest         # run all tests
+poetry run pytest -v      # verbose
+poetry run pytest --cov=backend tests/
+```
+Key test files:
+- tests/test_agent.py
+- tests/test_tools.py
+- tests/test_api.py
 
-### Example Integration Flow
+Frontend
+```bash
+cd frontend
+npm test
+# or
+ng test
+```
 
-1. User enters a task in the Angular UI
-2. Angular service sends POST request to `/run` endpoint
-3. Backend React Agent processes the task using available tools
-4. Agent returns results with intermediate steps
-5. Angular component displays the results with full execution trace
+---
 
-## Architecture
+## Development notes & tips
 
-### Backend Architecture
+- The backend auto-discovers tools and exposes their JSON schemas via the API; use those schemas to form correct requests from the frontend.
+- When adding new tools, include JSON Schema annotations so the frontend and docs can render parameter forms automatically.
+- If using CORS, confirm the backend allows requests from the frontend origin (http://localhost:4200) during development.
+- For grading-specific features:
+  - Rubrics should be uploaded in a structured format (JSON/YAML) so rules can be parsed into tool-driven checks.
+  - Batch grading can be implemented as a job queue if scaling to many submissions.
 
-- **React Agent Loop**: Implements the ReAct pattern (Thought → Action → Observation)
-- **Tool Discovery**: Automatic discovery and registration of tools with JSON Schema
-- **Modular Design**: Separate modules for agent logic, tools, and API
-- **Type Safety**: Pydantic models for all data structures
+---
 
-### Frontend Architecture
+## Contributing
 
-- **Standalone Components**: Modern Angular architecture with standalone components
-- **Service Layer**: Separation of concerns with dedicated API service
-- **Reactive Programming**: RxJS observables for async operations
-- **Component Communication**: Clean data flow from service to component to template
+Contributions welcome. Suggested workflow:
+1. Fork the repository and create a feature branch (e.g., `feature/readme-improvements`).
+2. Open a PR describing the change and include any relevant screenshots or logs.
+3. Keep commits focused and include tests if behavior changes.
 
-## Development Container
+If you'd like, I can create a branch with this README update and open a PR — tell me whether to proceed and the branch/commit message to use.
 
-The `.devcontainer` folder provides a complete development environment:
+---
 
-- **Python 3.11**: Latest Python version with pip and virtual environment support
-- **Node.js 20.x**: Latest LTS version of Node.js
-- **npm**: Node package manager
-- **Poetry**: Python dependency and package manager
-- **VS Code Extensions**: Pre-configured extensions for Python and Angular development
+## Acknowledgements
 
-## Configuration Files
-
-- **pyproject.toml**: Python project configuration and dependencies
-- **package.json**: Node.js dependencies and scripts
-- **angular.json**: Angular CLI configuration
-- **devcontainer.json**: Development container configuration
-
-## Latest Package Versions
-
-The project uses the latest stable versions of all dependencies:
-
-**Backend:**
-- FastAPI: ^0.120.1
-- Pydantic: ^2.12.3
-- LangChain: ^1.0.2
-- Pytest: ^8.4.2
-- Black: ^25.9.0
-- Uvicorn: ^0.38.0
-
-**Frontend:**
-- Angular: Latest (generated via `ng new`)
-- TypeScript: Latest stable
-- RxJS: Latest stable
-
-## License
-
-This project is part of Team-H development.
+This repository demonstrates a small full-stack integration of modern Python backend tooling and a modern Angular frontend for demos and experimentation. The grading agent concept follows ReAct-style agent patterns and leverages LLMs for reasoning and structured tool calls.
