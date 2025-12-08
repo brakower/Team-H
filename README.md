@@ -147,7 +147,7 @@ Frontend (development)
 cd frontend
 npm start
 # or
-ng serve --host 0.0.0.0 --port 4200
+npx ng serve --host 0.0.0.0 --port 4200
 ```
 Open: http://localhost:4200
 
