@@ -387,3 +387,165 @@ button:disabled {
   font-size: 0.95rem;
   display: inline-block;
 }
+
+.multi-agent-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.agent-card details {
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.agent-card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 16px;
+  background: #fafafa;
+  overflow: hidden;    
+}
+
+.agent-card details pre {
+  max-width: 100%;           /* never exceed card width */
+  overflow-x: auto;          /* horizontal scroll instead of spill */
+  white-space: pre-wrap;     /* wrap long text */
+  word-break: break-word;    /* break long strings */
+  background: #f7f7f7;
+  padding: 8px;
+  border-radius: 6px;
+}
+
+.feedback-block {
+  background: #f0f0f0;
+  padding: 8px;
+  border-radius: 6px;
+  max-height: 150px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
+
+.stop-button {
+  margin-left: 10px;
+  padding: 6px 14px;
+  background-color: #d9534f;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.stop-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* --- RESULTS SECTION UPGRADE --- */
+
+/* overall spacing */
+.results-section {
+  margin-top: 30px;
+}
+
+/* Final Grade Card */
+.grade-card {
+  display: flex;
+  align-items: center;
+  padding: 18px;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e5e8ef;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.05);
+}
+
+.grade-left .score-circle {
+  width: 90px;
+  height: 90px;
+  font-size: 1.25rem;
+}
+
+.grade-right .summary-title {
+  font-weight: 700;
+  font-size: 1.15rem;
+  margin-bottom: 4px;
+  color: #0b2b4a;
+}
+
+/* Multi-agent results grid */
+.multi-agent-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 25px;
+  margin-top: 24px;
+}
+
+/* Rubric item cards */
+.agent-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #e4e7ec;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+  transition: box-shadow 0.2s ease;
+}
+
+.agent-card:hover {
+  box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+}
+
+.agent-card h3 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #11243d;
+}
+
+.agent-card p {
+  margin: 4px 0;
+}
+
+/* Feedback block */
+.feedback-block {
+  background: #f6f7fa;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  line-height: 1.35;
+  border: 1px solid #e5e7eb;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+/* Details dropdowns */
+.agent-card details {
+  margin-top: 12px;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 10px;
+}
+
+.agent-card summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #0b4ca8;
+}
+
+.agent-card summary:hover {
+  text-decoration: underline;
+}
+
+.agent-card details pre {
+  margin-top: 8px;
+  background: #0f1724;
+  color: #d1d5db;
+  padding: 12px;
+  border-radius: 6px;
+  max-height: 250px;
+  overflow: auto;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
