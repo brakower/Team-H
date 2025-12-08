@@ -30,8 +30,10 @@ This README summarizes project structure, setup, usage, API examples, testing in
 Team-H/
 ├── .devcontainer/          # VS Code devcontainer configuration  
 ├── backend/                # Python backend (FastAPI + React Agent)  
-│   ├── backend/            # main backend package (agent, tools, models)  
 │   ├── tests/              # unit tests  
+│   ├── models/             # pydantic models
+│   ├── services/           # backend services
+│   ├── agent/              # ReAct Agent
 │   ├── main.py             # FastAPI application entrypoint  
 │   └── pyproject.toml      # Poetry configuration  
 └── frontend/               # Angular frontend (demo UI & services)
@@ -76,6 +78,10 @@ Frontend
 - Poetry (for Python dependency management)
 - (Optional) VS Code with Dev Containers extension for reproducible development environment
 - OpenAI API key (for agent LLM integration) — set via environment variable or secrets manager during deployment. Please reach out to developers or client for API keys.
+- Sample demo files
+   - Student submission with nested files: https://github.com/katie-cooper/agent-student-submission-files
+   - Student submission with basic file structure: https://github.com/Jordweinstein/agent-student-submission
+   - Sample rubric: /examples/student_example/rubric.json
 
 ---
 
