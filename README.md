@@ -6,6 +6,8 @@ A modern full-stack application that demonstrates a Python FastAPI backend (incl
 
 This README summarizes project structure, setup, usage, API examples, testing instructions, and the project goals and user stories for COMP423-style automated grading.
 
+Team Website with further documentation: [Team H](https://tarheels.live/comp523teamh/)
+
 ---
 
 ## Table of contents
