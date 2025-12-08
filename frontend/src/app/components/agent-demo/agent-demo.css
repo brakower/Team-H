@@ -395,11 +395,28 @@ button:disabled {
   margin-top: 12px;
 }
 
+.agent-card details {
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
 .agent-card {
   border: 1px solid #ddd;
   border-radius: 8px;
   padding: 16px;
   background: #fafafa;
+  overflow: hidden;    
+}
+
+.agent-card details pre {
+  max-width: 100%;           /* never exceed card width */
+  overflow-x: auto;          /* horizontal scroll instead of spill */
+  white-space: pre-wrap;     /* wrap long text */
+  word-break: break-word;    /* break long strings */
+  background: #f7f7f7;
+  padding: 8px;
+  border-radius: 6px;
 }
 
 .feedback-block {
