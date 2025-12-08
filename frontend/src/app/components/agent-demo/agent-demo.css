@@ -387,3 +387,41 @@ button:disabled {
   font-size: 0.95rem;
   display: inline-block;
 }
+
+.multi-agent-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.agent-card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 16px;
+  background: #fafafa;
+}
+
+.feedback-block {
+  background: #f0f0f0;
+  padding: 8px;
+  border-radius: 6px;
+  max-height: 150px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
+
+.stop-button {
+  margin-left: 10px;
+  padding: 6px 14px;
+  background-color: #d9534f;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.stop-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

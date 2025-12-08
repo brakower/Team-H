@@ -1,27 +1,36 @@
 <div class="agent-demo-container">
   <h1>React Agent Demo</h1>
-  
+
+  <!-- HEALTH STATUS -->
   <div class="health-status">
-    <strong>Backend Status:</strong> 
+    <strong>Backend Status:</strong>
     <span [class.healthy]="healthStatus === 'healthy'" [class.unhealthy]="healthStatus !== 'healthy'">
-      {{ healthStatus || 'checking...' }}
+      {{ healthStatus || "checking..." }}
     </span>
   </div>
 
-
+  <!-- TOOLS LIST -->
   <div class="section">
     <h2>
       Available Tools
-      <button class="link-button" (click)="showTools = !showTools" [attr.aria-expanded]="showTools">{{ showTools ? 'Hide' : 'Show' }}</button>
+      <button class="link-button" (click)="showTools = !showTools">
+        {{ showTools ? "Hide" : "Show" }}
+      </button>
     </h2>
-    <ul *ngIf="showTools" class="tools-list simple-list">
-      <li *ngFor="let tool of tools" class="tool-item">
-        <div class="tool-name">{{ tool.name }}</div>
-        <div class="tool-desc">{{ tool.description }}</div>
-      </li>
-    </ul>
+
+    @if (showTools) {
+      <ul class="tools-list simple-list">
+        @for (tool of tools; track tool.name) {
+          <li class="tool-item">
+            <div class="tool-name">{{ tool.name }}</div>
+            <div class="tool-desc">{{ tool.description }}</div>
+          </li>
+        }
+      </ul>
+    }
   </div>
 
+  <!-- RUBRIC UPLOAD -->
   <div class="section upload-section">
     <h3>
       @if (rubricUploadResponse) {
@@ -30,42 +39,38 @@
         Upload Rubric
       }
     </h3>
-  
+
     <div class="upload-box">
-      <input type="file" class="upload-input" (change)="onRubricSelected($event)">
+      <input type="file" class="upload-input" (change)="onRubricSelected($event)" />
       <button class="upload-button">Choose File</button>
     </div>
   </div>
-  
+
+  <!-- RUBRIC CRITERIA -->
   @if (rubricSchema) {
     <div class="section">
       <h3>Select Rubric Criteria</h3>
-  
+
       @for (item of rubricSchema.rubric_items; track item.id) {
         <div class="rubric-accordion">
-          
-          <!-- Header -->
-          <div 
-            class="rubric-header"
-            (click)="expandedRubric[item.id] = !expandedRubric[item.id]"
-          >
+          <div class="rubric-header" (click)="expandedRubric[item.id] = !expandedRubric[item.id]">
             <div class="rubric-title">
-              <input type="checkbox"
-                     [(ngModel)]="rubricSelections[item.id]"
-                     (click)="$event.stopPropagation()" />
-  
+              <input
+                type="checkbox"
+                [(ngModel)]="rubricSelections[item.id]"
+                (click)="$event.stopPropagation()"
+              />
               <strong>{{ item.label }}</strong>
             </div>
-  
+
             <div class="arrow" [class.open]="expandedRubric[item.id]">▼</div>
           </div>
-  
-          <!-- Body (hidden unless expanded) -->
+
           @if (expandedRubric[item.id]) {
             <div class="rubric-body">
-              <p>Maximum Points: {{ item.max_points }}</p>
+              <p><strong>Max Points:</strong> {{ item.max_points }}</p>
               <p>{{ item.description }}</p>
-  
+
               @if (item.items) {
                 <ul>
                   @for (sub of item.items; track sub) {
@@ -79,22 +84,21 @@
       }
     </div>
 
+    <!-- SUBMISSION REPO INPUT -->
     <div class="section upload-section">
       <h3 class="upload-title">Upload Submission</h3>
-    
+
       <div class="upload-box pretty-upload-box">
-        <input 
-          type="url" 
-          [(ngModel)]="submissionRepoUrl" 
+        <input
+          type="url"
+          [(ngModel)]="submissionRepoUrl"
           placeholder="https://github.com/username/repo"
           class="upload-input-field"
-        >
-    
-        <button class="upload-button" (click)="submitGithubUrl()">
-          Load Repository
-        </button>
+        />
+
+        <button class="upload-button" (click)="submitGithubUrl()">Load Repository</button>
       </div>
-    
+
       @if (submissionUploadResponse) {
         <div class="upload-status success-status">
           <strong>Repository Cloned:</strong>
@@ -104,141 +108,127 @@
     </div>
   }
 
-
+  <!-- RUN TESTS -->
   <div class="section">
     <h2>Run Tests</h2>
+
     <div class="task-form">
-      
       <div class="form-group">
-        <label for="maxIterations">Max Iterations:</label>
-        <input 
-          id="maxIterations" 
-          type="number" 
-          [(ngModel)]="maxIterations" 
-          min="1" 
+        <label>Max Iterations:</label>
+        <input
+          type="number"
+          [(ngModel)]="maxIterations"
+          min="1"
           max="20"
           [disabled]="isLoading"
         />
       </div>
-      
-      <button (click)="runTask()" [disabled]="isLoading || !anySelected() || !submissionUploadResponse">
-        {{ isLoading ? 'Running...' : 'Run Task' }}
+
+      <button
+        (click)="runTask()"
+        [disabled]="isLoading || !anySelected() || !submissionUploadResponse"
+      >
+        {{ isLoading ? "Running..." : "Run Task" }}
       </button>
+
+      <button
+        class="stop-button"
+        (click)="stopTask()"
+        [disabled]="!isLoading"
+      >
+        Stop
+      </button>
+
     </div>
 
-    <div *ngIf="error" class="error">
-      {{ error }}
-    </div>
+    @if (error) {
+      <div class="error">{{ error }}</div>
+    }
 
-    <div *ngIf="result">
-      <!-- Polished grade + result UI -->
-      <div class="grade-and-result">
-        <div class="grade-card">
-          <div class="grade-left">
-            <div class="score-circle" [ngClass]="scoreColorClass(getPercentage())">
-              <div class="score-text">{{ getPercentage() !== null ? getPercentage() + '%' : '—' }}</div>
-            </div>
-          </div>
-          <div class="grade-right">
-            <div class="summary">
-              <div class="summary-title">{{ parsedOutput?.summary || parsedOutput?.student_file || 'Assignment' }}</div>
-              <div class="summary-sub">{{ parsedOutput?.student_file ? ('File: ' + parsedOutput.student_file) : '' }}</div>
-            </div>
-            <div class="score-row">
-              <div class="score-values">
-                <div *ngIf="parsedOutput?.total_score !== undefined && parsedOutput?.max_score !== undefined">
-                  {{ parsedOutput.total_score }} / {{ parsedOutput.max_score }} pts
+    <!-- MULTI-AGENT RESULTS -->
+    @if (multiAgentResults?.length > 0) {
+      <div class="section">
+        <h2>Results</h2>
+
+        <!-- FINAL GRADE CARD -->
+        @if (parsedOutput) {
+          <div class="grade-and-result">
+
+            <div class="grade-card">
+              <div class="grade-left">
+                <div class="score-circle" [ngClass]="scoreColorClass(getPercentage())">
+                  <div class="score-text">
+                    {{ getPercentage() !== null ? getPercentage() + '%' : '—' }}
+                  </div>
                 </div>
               </div>
-              <div class="actions">
-                <button class="small-button" (click)="viewRaw = !viewRaw">{{ viewRaw ? 'Hide raw' : 'View raw' }}</button>
-                <button class="small-button" (click)="copyToClipboard(prettyObservation(parsedOutput || result.result))">Copy JSON</button>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        <div class="result-content">
-          <p><strong>Log:</strong> {{ result.log }}</p>
+              <div class="grade-right">
+                <div class="summary">
+                  <div class="summary-title">{{ parsedOutput.summary }}</div>
+                </div>
 
-          <div *ngIf="viewRaw" class="raw-block">
-            <pre>{{ prettyObservation(result.result?.output ?? result.result) }}</pre>
-          </div>
-
-          <div *ngIf="parsedOutput">
-            <p class="summary-text"><strong>Summary:</strong> {{ parsedOutput.summary || parsedOutput.student_file }}</p>
-
-            <div *ngIf="parsedOutput.breakdown">
-              <h4>
-                Breakdown
-                <button class="link-button" (click)="showBreakdown = !showBreakdown">{{ showBreakdown ? 'Hide' : 'Show' }}</button>
-              </h4>
-              <div *ngIf="showBreakdown">
-                <div *ngFor="let entry of getBreakdownEntries(parsedOutput)" class="category-card">
-                  <div class="category-header">
-                    <div>
-                      <strong>{{ entry.key }}</strong>
-                      <span class="muted"> — {{ entry.data?.earned ?? 0 }} / {{ entry.data?.possible ?? 0 }}</span>
-                    </div>
-                    <div>
-                      <button class="small-button" (click)="toggleExpanded('cat-' + entry.key)">{{ isExpanded('cat-' + entry.key) ? 'Collapse' : 'Expand' }}</button>
-                    </div>
+                <div class="score-row">
+                  <div class="score-values">
+                    {{ parsedOutput.total_score }} / {{ parsedOutput.max_score }} pts
                   </div>
-                  <div *ngIf="isExpanded('cat-' + entry.key)" class="category-body">
-                    <ul>
-                      <li *ngFor="let fb of (entry.data?.feedback || []); let j = index">
-                        <ng-container *ngIf="isArray(fb); else singleFb2">
-                          <ul>
-                            <li *ngFor="let sub of fb">{{ prettyObservation(sub) }}</li>
-                          </ul>
-                        </ng-container>
-                        <ng-template #singleFb2>
-                          <div>
-                            <span *ngIf="(typeof fb === 'string' && fb.length > 200) && !isExpanded('fb-' + entry.key + '-' + j)">
-                              {{ shortText(fb, 200) }}
-                              <button class="small-button" (click)="toggleExpanded('fb-' + entry.key + '-' + j)">Show more</button>
-                            </span>
-                            <span *ngIf="(typeof fb === 'string' && fb.length > 200) && isExpanded('fb-' + entry.key + '-' + j)">
-                              {{ fb }} <button class="small-button" (click)="toggleExpanded('fb-' + entry.key + '-' + j)">Show less</button>
-                            </span>
-                            <span *ngIf="!(typeof fb === 'string' && fb.length > 200)">{{ prettyObservation(fb) }}</span>
-                          </div>
-                        </ng-template>
-                      </li>
-                    </ul>
+
+                  <div class="actions">
+                    <button class="small-button" (click)="viewRaw = !viewRaw">
+                      {{ viewRaw ? "Hide raw" : "View raw" }}
+                    </button>
+
+                    <button class="small-button" (click)="copyToClipboard(prettyObservation(parsedOutput))">
+                      Copy JSON
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- Fallback: raw output if no parsedOutput -->
-          <div *ngIf="!parsedOutput && !viewRaw">
-            <p><strong>Output:</strong> {{ result.result?.output }}</p>
-          </div>
-
-          <div *ngIf="result.steps && result.steps.length > 0">
-            <h4>
-              Agent Steps
-              <button class="link-button" (click)="showSteps = !showSteps">{{ showSteps ? 'Hide' : 'Show' }}</button>
-            </h4>
-            <div *ngIf="showSteps">
-              <div *ngFor="let step of result.steps; let i = index" class="step">
-                <p><strong>Step {{ i + 1 }} — Tool:</strong> {{ step.action?.tool }}</p>
-                <p *ngIf="step.action?.tool_input"><strong>Inputs:</strong></p>
-                <pre *ngIf="step.action?.tool_input">{{ formatParameters(step.action.tool_input) }}</pre>
-                <p><strong>Observation:</strong></p>
-                <pre *ngIf="isJsonLike(step.observation); else rawObs">{{ prettyObservation(step.observation) }}</pre>
-                <ng-template #rawObs><span>{{ step.observation }}</span></ng-template>
+            @if (viewRaw) {
+              <div class="raw-block">
+                <pre>{{ prettyObservation(parsedOutput) }}</pre>
               </div>
-            </div>
+            }
           </div>
+        }
+
+        <div class="multi-agent-grid">
+          @for (item of multiAgentResults; track item.rubric_item) {
+
+            <!-- Each Rubric Item Card -->
+            <div class="agent-card">
+              <h3>{{ item.rubric_item | titlecase }}</h3>
+
+              <p><strong>Score:</strong>
+                {{ item.parsed?.total_score ?? "—" }}
+                /
+                {{ item.parsed?.max_score ?? "—" }}
+              </p>
+
+              <p><strong>Feedback:</strong></p>
+              <pre class="feedback-block">
+{{ item.parsed?.breakdown?.[item.rubric_item]?.feedback || "No feedback." }}
+              </pre>
+
+              <details>
+                <summary>Show raw output</summary>
+                <pre>{{ item | json }}</pre>
+              </details>
+
+              <details>
+                <summary>Agent Steps</summary>
+                @for (step of item.steps; track step) {
+                  <p><strong>Tool:</strong> {{ step.action?.tool }}</p>
+                  <p><strong>Observation:</strong></p>
+                  <pre>{{ prettyObservation(step.observation) }}</pre>
+                }
+              </details>
+            </div>
+          }
         </div>
       </div>
-    </div>
+    }
   </div>
 </div>
-
-
-
-

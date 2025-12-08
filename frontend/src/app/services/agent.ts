@@ -46,9 +46,9 @@ export class Agent {
     return this.http.get<ToolSchema>(`${this.apiUrl}/tools/${toolName}`);
   }
 
-  runAgent(task: AgentTask): Observable<AgentResult> {
-    return this.http.post<AgentResult>(`${this.apiUrl}/run`, task);
-  }
+  runAgent(task: AgentTask): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/run`, task);
+  }  
 
   executeTool(execution: ToolExecution): Observable<ToolResult> {
     return this.http.post<ToolResult>(`${this.apiUrl}/execute`, execution);

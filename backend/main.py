@@ -8,6 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
 from models.rubric_schema import RubricItem, RubricSchema
+import asyncio
+import time
 
 from agent import ReactAgent, ToolRegistry, ToolSchema
 from tools import (
@@ -278,32 +280,96 @@ async def get_tool_schema(tool_name: str):
     return schema
 
 
+## run helper function:
+async def run_single_rubric_item(tool_registry, rubric_item_id, rubric_map, repo_path, max_iterations):
+    start = time.time()
+
+    # Build a prompt specifically for this item
+    item = rubric_map[rubric_item_id]
+    description = item.get("description", "")
+
+    task_prompt = (
+        f"Grade the student submission based on the rubric item '{rubric_item_id}'.\n"
+        f"Description: {description}\n"
+        f"Submission files are located at: {repo_path}"
+    )
+
+    context = {
+        "rubric_items": [rubric_item_id],
+        "rubric": {rubric_item_id: item},
+        "repo_path": repo_path,
+    }
+
+    # NEW AGENT instance for this one rubric item
+    local_agent = ReactAgent(tool_registry, max_iterations=max_iterations)
+
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(
+        None,
+        lambda: local_agent.run(task_prompt, context)
+    )
+
+    return {
+        "rubric_item": rubric_item_id,
+        "result": result.return_values,
+        "log": result.log,
+        "steps": [
+            {
+                "action": {
+                    "tool": step.action.tool,
+                    "input": step.action.tool_input,
+                    "log": step.action.log,
+                },
+                "observation": step.observation,
+            }
+            for step in local_agent.get_intermediate_steps()
+        ],
+        "duration": time.time() - start,
+    }
+
 @app.post("/run")
 async def run_agent(request: TaskRequest):
-    """Run the agent with a task."""
+    """
+    Multi-agent version of /run:
+    - Creates a new agent per rubric item
+    - Runs them concurrently
+    - Returns a list of per-item results
+    """
+
     print("RUNNING REQUEST BODY:", request.dict())
+
+    rubric_item_ids = request.context.get("rubric_items", [])
+    rubric_map = request.context.get("rubric", {})
+    repo_path = request.context.get("repo_path")
+    max_iter = request.max_iterations or 10
+
+    if not rubric_item_ids:
+        raise HTTPException(status_code=400, detail="Missing rubric items")
+
+    # Create concurrent tasks
+    tasks = [
+        run_single_rubric_item(
+            tool_registry,
+            rubric_item_id,
+            rubric_map,
+            repo_path,
+            max_iter
+        )
+        for rubric_item_id in rubric_item_ids
+    ]
+
     try:
-        # Create new agent with custom max_iterations if provided
-        current_agent = ReactAgent(tool_registry, max_iterations=request.max_iterations)
-        result = current_agent.run(request.task, request.context)
+        # Run all rubric-item agents concurrently
+        results = await asyncio.gather(*tasks)
 
         return {
-            "result": result.return_values,
-            "log": result.log,
-            "steps": [
-                {
-                    "action": {
-                        "tool": step.action.tool,
-                        "input": step.action.tool_input,
-                        "log": step.action.log,
-                    },
-                    "observation": step.observation,
-                }
-                for step in current_agent.get_intermediate_steps()
-            ],
+            "multi_agent_results": results,
+            "count": len(results)
         }
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error running task: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error running multi-agent task: {str(e)}")
+
 
 
 @app.post("/execute")
