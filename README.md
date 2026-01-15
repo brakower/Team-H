@@ -27,6 +27,7 @@ Team Website with further documentation: [Team H](https://tarheels.live/comp523t
 
 ## Project structure
 
+```bash
 Team-H/
 ├── .devcontainer/          # VS Code devcontainer configuration
 ├── backend/                # Python backend (FastAPI + React Agent)
@@ -37,7 +38,7 @@ Team-H/
 │   ├── main.py             # FastAPI application entrypoint
 │   └── pyproject.toml      # Poetry configuration
 └── frontend/               # Angular frontend (demo UI & services)
-
+```
 ---
 
 ## About the project
