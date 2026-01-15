@@ -1,5 +1,3 @@
-````markdown name=README.md url=https://github.com/brakower/Team-H/blob/98e944900f76d722926fa692aafeca5c6eca82b3/README.md
-```markdown
 # Team-H
 
 A modern full-stack application that demonstrates a Python FastAPI backend (including a ReAct-style "React Agent" and dynamic tool system) and an Angular frontend for interactive demos.
