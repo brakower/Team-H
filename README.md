@@ -1,5 +1,3 @@
-````markdown name=README.md url=https://github.com/brakower/Team-H/blob/98e944900f76d722926fa692aafeca5c6eca82b3/README.md
-```markdown
 # Team-H
 
 A modern full-stack application that demonstrates a Python FastAPI backend (including a ReAct-style "React Agent" and dynamic tool system) and an Angular frontend for interactive demos.
@@ -29,17 +27,18 @@ Team Website with further documentation: [Team H](https://tarheels.live/comp523t
 
 ## Project structure
 
+```bash
 Team-H/
-├── .devcontainer/          # VS Code devcontainer configuration  
-├── backend/                # Python backend (FastAPI + React Agent)  
-│   ├── tests/              # unit tests  
+├── .devcontainer/          # VS Code devcontainer configuration
+├── backend/                # Python backend (FastAPI + React Agent)
+│   ├── tests/              # unit tests
 │   ├── models/             # pydantic models
 │   ├── services/           # backend services
 │   ├── agent/              # ReAct Agent
-│   ├── main.py             # FastAPI application entrypoint  
-│   └── pyproject.toml      # Poetry configuration  
+│   ├── main.py             # FastAPI application entrypoint
+│   └── pyproject.toml      # Poetry configuration
 └── frontend/               # Angular frontend (demo UI & services)
-
+```
 ---
 
 ## About the project
