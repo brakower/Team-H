@@ -21,6 +21,7 @@ Team Website with further documentation: [Team H](https://tarheels.live/comp523t
 - API examples
 - Testing
 - Contributing
+- Client Handoff Plan
 - License & acknowledgements
 
 ---
@@ -233,6 +234,47 @@ Contributions welcome. Suggested workflow:
 3. Keep commits focused and include tests if behavior changes.
 
 If you'd like, I can create a branch with this README update and open a PR — tell me whether to proceed and the branch/commit message to use.
+
+---
+
+## Client Handoff Plan
+
+A detailed client handoff plan has been included in this repository to support future developers, deployment setup, and long-term maintenance of the system.
+
+The handoff document includes:
+- Environment setup instructions
+- Frontend and backend startup procedures
+- AI agent configuration details
+- OpenAI credential requirements
+- Deployment recommendations
+- Client ownership and hosting considerations
+- Support recommendations
+- New command-line grading workflow documentation
+- Git history / commit-based grading functionality
+- Links to all client training videos and documentation resources
+
+### Handoff Documentation
+
+See the full handoff document here:
+
+[CLIENT_HANDOFF_PLAN.md](./CLIENT_HANDOFF_PLAN.md)
+
+### Training Videos
+
+- Setting up your environment:  
+  https://www.youtube.com/watch?v=xLGGQjgNT14
+
+- Running the frontend and backend:  
+  https://www.youtube.com/watch?v=2B2d52GgK74
+
+- Using the AI agent:  
+  https://www.youtube.com/watch?v=h5KkHFPOI0E
+
+### Team Website
+
+Additional architecture diagrams, testing documentation, and future developer resources are available on the team website:
+
+https://tarheels.live/comp523teamh/
 
 ---
 
