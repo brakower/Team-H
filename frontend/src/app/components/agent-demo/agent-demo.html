@@ -78,6 +78,18 @@
                   }
                 </ul>
               }
+
+              @if (item.id === 'commit messages' || item.id === 'commit_messages') {
+                <div class="commit-message-input">
+                  <label>Expected commit messages</label>
+                  <textarea
+                    [(ngModel)]="commitMessageInputs[item.id]"
+                    placeholder="Enter expected commit messages, one per line or separated by commas"
+                    rows="3"
+                  ></textarea>
+                  <div class="hint">These messages will be matched against the repo commit history.</div>
+                </div>
+              }
             </div>
           }
         </div>
@@ -105,6 +117,25 @@
           <span>{{ submissionUploadResponse.project_path }}</span>
         </div>
       }
+
+      <div class="upload-box pretty-upload-box local-path-box">
+        <input
+          type="text"
+          [(ngModel)]="localSubmissionsPath"
+          placeholder="Local submissions folder (relative to backend)"
+          class="upload-input-field"
+        />
+        <button class="upload-button" (click)="validateLocalPath()">Load Files</button>
+      </div>
+      <div class="hint">
+        If provided, the server will scan this folder for repos and grade each one.
+      </div>
+      @if (localPathStatus) {
+        <div class="upload-status success-status">
+          <strong>Local Path Loaded:</strong>
+          <span>{{ localPathStatus.resolved_path }} ({{ localPathStatus.count }} repos)</span>
+        </div>
+      }
     </div>
   }
 
@@ -126,7 +157,7 @@
 
       <button
         (click)="runTask()"
-        [disabled]="isLoading || !anySelected() || !submissionUploadResponse"
+        [disabled]="isLoading || !anySelected() || (!submissionUploadResponse && !localPathStatus)"
       >
         {{ isLoading ? "Running..." : "Run Task" }}
       </button>
@@ -228,6 +259,30 @@
             </div>
           }
         </div>
+      </div>
+    }
+
+    @if (result?.repos?.length) {
+      <div class="section results-section">
+        <h2>Local Batch Results</h2>
+
+        @for (repo of result.repos; track repo.repo_path) {
+          <div class="agent-card">
+            <h3>{{ repo.repo_name }}</h3>
+            <p class="muted">{{ repo.repo_path }}</p>
+
+            @if (repo.multi_agent_results?.length) {
+              <ul class="simple-list">
+                @for (item of repo.multi_agent_results; track item.rubric_item) {
+                  <li>
+                    <strong>{{ item.rubric_item | titlecase }}:</strong>
+                    {{ item.parsed?.total_score ?? "—" }} / {{ item.parsed?.max_score ?? "—" }}
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+        }
       </div>
     }
   </div>

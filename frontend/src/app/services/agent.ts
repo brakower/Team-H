@@ -15,6 +15,13 @@ export interface AgentTask {
   max_iterations?: number;
 }
 
+export interface BatchTask {
+  task: string;
+  context: any;
+  path: string;
+  max_iterations?: number;
+}
+
 export interface AgentResult {
   result: any;
   log: string;
@@ -29,6 +36,10 @@ export interface ToolExecution {
 export interface ToolResult {
   tool: string;
   result: any;
+}
+
+export interface LocalPathRequest {
+  path: string;
 }
 
 @Injectable({
@@ -50,6 +61,10 @@ export class Agent {
     return this.http.post<any>(`${this.apiUrl}/run`, task);
   }  
 
+  runLocalBatch(task: BatchTask): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/run-local-batch`, task);
+  }
+
   executeTool(execution: ToolExecution): Observable<ToolResult> {
     return this.http.post<ToolResult>(`${this.apiUrl}/execute`, execution);
   }
@@ -70,6 +85,10 @@ export class Agent {
 
   uploadGithubRepo(url: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/upload-github`, { url });
+  }
+
+  validateLocalPath(path: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/validate-local-path`, { path });
   }
 }
 

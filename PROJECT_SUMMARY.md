@@ -33,6 +33,7 @@ Team-H is a modern full-stack application featuring:
   - check_syntax()
   - check_required_elements()
   - check_documentation_tools()
+  - #TODO: Add commit check here
   - check_style_tools()
   - run_functional_tests()
   - compute_final_grade()

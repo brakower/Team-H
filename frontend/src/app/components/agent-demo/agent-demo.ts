@@ -39,10 +39,15 @@ export class AgentDemo implements OnInit {
   rubricSelections: { [key: string]: boolean } = {};
   expandedRubric: { [key: string]: boolean } = {};
   rubricPoints: { [key: string]: number } = {};
+  commitMessageInputs: { [key: string]: string } = {};
 
   // Repo upload
   submissionRepoUrl = '';
   submissionUploadResponse: any = null;
+
+  // Local batch input
+  localSubmissionsPath = '';
+  localPathStatus: any = null;
 
   taskSubscription: any = null;
 
@@ -82,11 +87,13 @@ export class AgentDemo implements OnInit {
         this.rubricSelections = {};
         this.expandedRubric = {};
         this.rubricPoints = {};
+        this.commitMessageInputs = {};
 
         res.rubric_items.forEach((item: RubricItem) => {
           this.rubricSelections[item.id] = false;
           this.expandedRubric[item.id] = false;
           this.rubricPoints[item.id] = item.max_points ?? 1;
+          this.commitMessageInputs[item.id] = '';
         });
       },
       error: () => {
@@ -111,6 +118,28 @@ export class AgentDemo implements OnInit {
       },
       error: () => {
         this.error = 'Failed to clone repository.';
+      },
+    });
+  }
+
+  // ---------------------------
+  // LOCAL PATH VALIDATION
+  // ---------------------------
+  validateLocalPath() {
+    if (!this.localSubmissionsPath.trim()) {
+      this.error = 'Please enter a valid local folder path.';
+      this.localPathStatus = null;
+      return;
+    }
+
+    this.error = '';
+    this.agentService.validateLocalPath(this.localSubmissionsPath.trim()).subscribe({
+      next: (res) => {
+        this.localPathStatus = res;
+      },
+      error: () => {
+        this.localPathStatus = null;
+        this.error = 'Please enter a valid local folder path.';
       },
     });
   }
@@ -150,6 +179,38 @@ export class AgentDemo implements OnInit {
       this.isLoading = false;
       return;
     }
+
+    const useLocalBatch = this.localSubmissionsPath.trim().length > 0;
+    if (!useLocalBatch && !this.submissionUploadResponse) {
+      this.error = 'Please load a repository or enter a local submissions path.';
+      this.isLoading = false;
+      return;
+    }
+
+    if (useLocalBatch && !this.localPathStatus) {
+      this.error = 'Please enter a valid local folder path.';
+      this.isLoading = false;
+      return;
+    }
+
+    const commitItem = selectedItems.find(
+      (item: any) => item.id === 'commit messages' || item.id === 'commit_messages'
+    );
+
+    let expectedCommitMessages: string[] = [];
+    if (commitItem) {
+      const raw = this.commitMessageInputs[commitItem.id] ?? '';
+      expectedCommitMessages = raw
+        .split(/\r?\n|,/)
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+
+      if (expectedCommitMessages.length === 0) {
+        this.error = 'Please enter at least one expected commit message.';
+        this.isLoading = false;
+        return;
+      }
+    }
   
     const rubricMapping: any = {};
     selectedItems.forEach((item: RubricItem) => {
@@ -165,16 +226,32 @@ export class AgentDemo implements OnInit {
       context: {
         rubric_items: selectedItems.map((i: any) => i.id),
         rubric: rubricMapping,
-        repo_path: this.submissionUploadResponse.project_path,
+        repo_path: this.submissionUploadResponse?.project_path,
+        commit_messages_expected: expectedCommitMessages,
       },
       max_iterations: this.maxIterations,
     };
-  
-    // SAVE subscription so we can cancel later
-    this.taskSubscription = this.agentService.runAgent(agentTask).subscribe({
-      next: (response: any) => {
-        console.log('Multi-agent response:', response);
-  
+
+    const handleResponse = (response: any) => {
+      console.log('Multi-agent response:', response);
+
+      if (response?.repos?.length) {
+        // Local batch response
+        this.multiAgentResults = [];
+        this.parsedOutput = null;
+        // Attach parsed outputs for each repo/item
+        response.repos = response.repos.map((repo: any) => ({
+          ...repo,
+          multi_agent_results: (repo.multi_agent_results || []).map((item: any) => {
+            let parsed = {};
+            try {
+              parsed = JSON.parse(item.result?.output || '{}');
+            } catch {}
+            return { ...item, parsed };
+          })
+        }));
+        this.result = response;
+      } else {
         // Parse multi-agent item results
         this.multiAgentResults = (response.multi_agent_results || []).map(
           (item: any) => {
@@ -185,22 +262,42 @@ export class AgentDemo implements OnInit {
             return { ...item, parsed };
           }
         );
-  
+
         this.parsedOutput = this.computeAggregateGrade(this.multiAgentResults);
         this.result = response;
-        this.isLoading = false;
-        this.taskSubscription = null;
-      },
-      error: (err) => {
-        if (err?.name === 'CanceledError') {
-          console.log('Task was cancelled.');
-        } else {
-          this.error = 'Failed to run agent: ' + err.message;
-        }
-        this.isLoading = false;
-        this.taskSubscription = null;
       }
-    });
+
+      this.isLoading = false;
+      this.taskSubscription = null;
+    };
+
+    const handleError = (err: any) => {
+      if (err?.name === 'CanceledError') {
+        console.log('Task was cancelled.');
+      } else {
+        this.error = 'Failed to run agent: ' + err.message;
+      }
+      this.isLoading = false;
+      this.taskSubscription = null;
+    };
+
+    if (useLocalBatch) {
+      this.taskSubscription = this.agentService.runLocalBatch({
+        task: agentTask.task,
+        context: agentTask.context,
+        path: this.localSubmissionsPath.trim(),
+        max_iterations: agentTask.max_iterations,
+      }).subscribe({
+        next: handleResponse,
+        error: handleError,
+      });
+    } else {
+      // SAVE subscription so we can cancel later
+      this.taskSubscription = this.agentService.runAgent(agentTask).subscribe({
+        next: handleResponse,
+        error: handleError,
+      });
+    }
   }
   
   

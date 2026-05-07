@@ -14,9 +14,9 @@
     ],
     "description": "All required functions are implemented"
   },
-  "documentation": {
+  "commit messages": {
     "points": 20,
-    "description": "Functions have docstrings and code has comments"
+    "description": "Commit Messages follow guidelines"
   },
   "functionality": {
     "points": 35,

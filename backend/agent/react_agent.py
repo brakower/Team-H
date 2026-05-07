@@ -168,15 +168,16 @@ class ReactAgent:
             # ------------------------------------------------------------
             f"When grading Python code, you must call tools in the exact following order, but skip tools if they aren't specified by the user:\n"
             f"1. load_rubric\n"
-            f"2. list_repo_files\n"
-            f"3. load_submission\n"
-            f"4. check_syntax\n"
-            f"5. check_required_elements\n"
-            f"6. check_documentation_tools\n"
-            f"7. check_style_tools\n"
-            f"8. load_test_cases\n"
-            f"9. run_functional_tests OR run_pytest_on_directory\n"
-            f"10. compute_final_grade\n\n"
+            f"2. check_commit_messages\n"
+            f"3. list_repo_files\n"
+            f"4. load_submission\n"
+            f"5. check_syntax\n"
+            f"6. check_required_elements\n"
+            f"7. check_documentation_tools\n"
+            f"8. check_style_tools\n"
+            f"9. load_test_cases\n"
+            f"10. run_functional_tests OR run_pytest_on_directory\n"
+            f"11. compute_final_grade\n\n"
 
             # ------------------------------------------------------------
             # HISTORY AWARENESS AND NON-REPETITION
@@ -184,7 +185,10 @@ class ReactAgent:
             f"CONTEXT FROM FRONTEND:\n{context_json}\n\n"
             f"IMPORTANT:\n"
             f"- The student repository path is {repo_path}\n"
-            f"Before calling load_submission, you MUST call list_repo_files with:\n"
+            f"- Only call load_submission if a code-related check is required (syntax, required_elements, documentation, style, functionality).\n"
+            f"- If commit messages is selected, you MUST call check_commit_messages before list_repo_files and before compute_final_grade.\n"
+            f"- If context includes commit_messages_expected, pass it as expected_messages to check_commit_messages.\n"
+            f"- Before calling load_submission (if needed), you MUST call list_repo_files with:\n"
             f"{{\n"
             f"  \"repo_path\": \"{repo_path}\"\n"
             f"}}\n\n"
@@ -205,13 +209,14 @@ class ReactAgent:
 
             f"If load_rubric already appears in the history, DO NOT call it again.\n"
             f"If load_submission already appears in the history, DO NOT call it again.\n"
+            f"If check_commit_messages already appears in the history, DO NOT call it again.\n"
             f"If check_syntax already appears in the history, DO NOT call it again.\n"
             f"If check_required_elements already appears in the history, DO NOT call it again.\n"
             f"If check_documentation_tools already appears in the history, DO NOT call it again.\n"
             f"If check_style_tools already appears in the history, DO NOT call it again.\n"
             f"If load_test_cases already appears in the history, DO NOT call it again.\n"
             f"If functional tests have already been run, DO NOT run them again.\n"
-            f"Only call compute_final_grade when ALL steps above exist in the history.\n"
+            f"Only call compute_final_grade when all REQUIRED steps above exist in the history.\n"
             f"After compute_final_grade, STOP making tool calls.\n\n"
 
             # ------------------------------------------------------------
@@ -277,7 +282,7 @@ class ReactAgent:
         selected rubric items.
         """
         # default minimal tool set that are safe to expose when no context is present
-        base = {"load_rubric", "list_repo_files", "load_submission"}
+        base = {"load_rubric", "list_repo_files"}
 
         if not context:
             # if no context, allow everything (fallback)
@@ -299,6 +304,8 @@ class ReactAgent:
             "documentation": ["check_documentation_tools"],
             "style": ["check_style_tools"],
             "functionality": ["load_test_cases", "run_functional_tests", "run_pytest_on_directory"],
+            "commit messages": ["check_commit_messages"],
+            "commit_messages": ["check_commit_messages"],
             # allow compute_final_grade always so agent can finish
         }
 
@@ -308,6 +315,10 @@ class ReactAgent:
             tools = mapping.get(key)
             if tools:
                 allowed.update(tools)
+
+        # load_submission is only needed when code-related checks are selected
+        if any(k in selected for k in {"syntax", "required_elements", "documentation", "style", "functionality"}):
+            allowed.add("load_submission")
 
         # Always allow compute_final_grade so agent can summarize final score
         allowed.add("compute_final_grade")
@@ -337,6 +348,17 @@ class ReactAgent:
         all_tools = self.tool_registry.list_tools()
         available_tools = [t for t in all_tools if t.name in allowed_names]
 
+        # Prevent compute_final_grade until required tools have run for selected rubric items
+        used_tools = {step.action.tool for step in (history or [])}
+        selected = set()
+        if isinstance(context, dict):
+            if isinstance(context.get("rubric_items"), list):
+                selected |= set(context.get("rubric_items"))
+            if isinstance(context.get("selected_ids"), list):
+                selected |= set(context.get("selected_ids"))
+            if isinstance(context.get("selectedIds"), list):
+                selected |= set(context.get("selectedIds"))
+
         if not available_tools:
             raise ValueError("No allowed tools available for the provided context")
 
@@ -349,6 +371,23 @@ class ReactAgent:
             history=history or [],
             context=context,
         )
+
+        # If the model returns a tool not in the allowed list, retry once with a stricter prompt
+        if action.tool not in allowed_names:
+            correction = (
+                task
+                + "\nIMPORTANT: Your previous action used a tool that is NOT in the available tools list. "
+                + "You MUST choose ONLY from the tools provided above."
+            )
+            action = self.prompt_llm(
+                prompt=correction,
+                available_tools=available_tools,
+                history=history or [],
+                context=context,
+            )
+
+        if action.tool not in allowed_names:
+            raise ValueError(f"Tool '{action.tool}' is not allowed for the provided context")
 
         if not isinstance(action, AgentAction):
             raise ValueError("The LLM did not return a valid AgentAction.")
@@ -383,6 +422,13 @@ class ReactAgent:
             checking_tools = {"check_syntax", "check_required_elements", "check_documentation_tools", "check_style_tools"}
             if action.tool in checking_tools and 'repo_path' not in tool_input and repo_path:
                 tool_input['repo_path'] = repo_path
+
+            # Inject expected commit messages from context when missing
+            if action.tool == "check_commit_messages":
+                if hasattr(self, 'current_context') and isinstance(self.current_context, dict):
+                    expected = self.current_context.get("commit_messages_expected")
+                    if expected and "expected_messages" not in tool_input and "expected_message" not in tool_input:
+                        tool_input["expected_messages"] = expected
 
             result = tool(**tool_input)
             # If the tool returned a dict or list (structured data), return valid JSON

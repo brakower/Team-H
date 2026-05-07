@@ -6,7 +6,7 @@ import os
 from git import Repo
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from models.rubric_schema import RubricItem, RubricSchema
 import asyncio
 import time
@@ -19,6 +19,7 @@ from tools import (
     list_repo_files,
     load_submission,
     load_test_cases,
+    check_commit_messages,
     check_syntax,
     check_required_elements,
     check_documentation_tools,
@@ -87,6 +88,24 @@ tool_registry.register_tool(
         },
         "required": ["repo_path"]
     }
+)
+
+tool_registry.register_tool(
+    "check_commit_messages",
+    check_commit_messages,
+    "Check a student repo's commit messages for a required message",
+    {
+        "type": "object",
+        "properties": {
+            "repo_path": {"type": "string"},
+            "expected_message": {"type": "string"},
+            "expected_messages": {"type": "array", "items": {"type": "string"}},
+            "match_mode": {"type": "string", "enum": ["exact", "contains"]},
+            "case_sensitive": {"type": "boolean"},
+            "max_commits": {"type": "integer"},
+        },
+        "required": ["repo_path"],
+    },
 )
 
 
@@ -225,6 +244,7 @@ tool_registry.register_tool(
             "documentation": {"type": "object"},
             "style": {"type": "object"},
             "tests": {"type": "object"},
+            "commit_messages": {"type": "object"},
         },
         "required": ["rubric", "syntax", "required", "documentation", "style", "tests"],
     },
@@ -242,11 +262,26 @@ class TaskRequest(BaseModel):
     max_iterations: Optional[int] = 10
 
 
+class BatchTaskRequest(BaseModel):
+    """Request model for running a batch task across local repos."""
+
+    task: str
+    context: Dict[str, Any]
+    path: str
+    max_iterations: Optional[int] = 10
+
+
 class ToolExecutionRequest(BaseModel):
     """Request model for executing a specific tool."""
 
     tool_name: str
     parameters: Dict[str, Any]
+
+
+class LocalPathRequest(BaseModel):
+    """Request model for validating a local submissions path."""
+
+    path: str
 
 
 @app.get("/")
@@ -281,7 +316,7 @@ async def get_tool_schema(tool_name: str):
 
 
 ## run helper function:
-async def run_single_rubric_item(tool_registry, rubric_item_id, rubric_map, repo_path, max_iterations):
+async def run_single_rubric_item(tool_registry, rubric_item_id, rubric_map, repo_path, max_iterations, commit_messages_expected=None):
     start = time.time()
 
     # Build a prompt specifically for this item
@@ -299,6 +334,8 @@ async def run_single_rubric_item(tool_registry, rubric_item_id, rubric_map, repo
         "rubric": {rubric_item_id: item},
         "repo_path": repo_path,
     }
+    if commit_messages_expected is not None:
+        context["commit_messages_expected"] = commit_messages_expected
 
     # NEW AGENT instance for this one rubric item
     local_agent = ReactAgent(tool_registry, max_iterations=max_iterations)
@@ -327,6 +364,34 @@ async def run_single_rubric_item(tool_registry, rubric_item_id, rubric_map, repo
         "duration": time.time() - start,
     }
 
+
+def _resolve_local_path(path: str) -> str:
+    if not path:
+        return path
+    expanded = os.path.expanduser(path)
+    if os.path.isabs(expanded):
+        return os.path.abspath(expanded)
+    # Treat relative paths as relative to the user's home directory
+    return os.path.abspath(os.path.join(os.path.expanduser("~"), expanded))
+
+
+def _collect_repo_paths(base_path: str) -> List[str]:
+    if not os.path.isdir(base_path):
+        return []
+
+    entries = [
+        os.path.join(base_path, name)
+        for name in os.listdir(base_path)
+        if os.path.isdir(os.path.join(base_path, name)) and not name.startswith(".")
+    ]
+
+    # If the directory contains subdirectories, treat each as a repo
+    if entries:
+        return entries
+
+    # Otherwise treat the base path itself as a repo
+    return [base_path]
+
 @app.post("/run")
 async def run_agent(request: TaskRequest):
     """
@@ -342,6 +407,7 @@ async def run_agent(request: TaskRequest):
     rubric_map = request.context.get("rubric", {})
     repo_path = request.context.get("repo_path")
     max_iter = request.max_iterations or 10
+    commit_messages_expected = request.context.get("commit_messages_expected")
 
     if not rubric_item_ids:
         raise HTTPException(status_code=400, detail="Missing rubric items")
@@ -353,7 +419,8 @@ async def run_agent(request: TaskRequest):
             rubric_item_id,
             rubric_map,
             repo_path,
-            max_iter
+            max_iter,
+            commit_messages_expected,
         )
         for rubric_item_id in rubric_item_ids
     ]
@@ -369,6 +436,79 @@ async def run_agent(request: TaskRequest):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error running multi-agent task: {str(e)}")
+
+
+@app.post("/run-local-batch")
+async def run_local_batch(request: BatchTaskRequest):
+    """
+    Run grading across a local folder of repositories.
+    The provided path can be relative to the backend working directory.
+    """
+    print("RUNNING LOCAL BATCH REQUEST BODY:", request.dict())
+
+    rubric_item_ids = request.context.get("rubric_items", [])
+    rubric_map = request.context.get("rubric", {})
+    max_iter = request.max_iterations or 10
+    commit_messages_expected = request.context.get("commit_messages_expected")
+
+    if not rubric_item_ids:
+        raise HTTPException(status_code=400, detail="Missing rubric items")
+
+    base_path = _resolve_local_path(request.path)
+    if not base_path or not os.path.isdir(base_path):
+        raise HTTPException(status_code=400, detail=f"Invalid path: {request.path}")
+
+    repo_paths = _collect_repo_paths(base_path)
+    if not repo_paths:
+        raise HTTPException(status_code=400, detail=f"No repositories found at: {base_path}")
+
+    batch_results = []
+    for repo_path in repo_paths:
+        tasks = [
+            run_single_rubric_item(
+                tool_registry,
+                rubric_item_id,
+                rubric_map,
+                repo_path,
+                max_iter,
+                commit_messages_expected,
+            )
+            for rubric_item_id in rubric_item_ids
+        ]
+
+        try:
+            results = await asyncio.gather(*tasks)
+        except Exception as e:
+            results = []
+
+        batch_results.append(
+            {
+                "repo_name": os.path.basename(repo_path),
+                "repo_path": repo_path,
+                "multi_agent_results": results,
+                "count": len(results),
+            }
+        )
+
+    return {"repos": batch_results, "count": len(batch_results)}
+
+
+@app.post("/validate-local-path")
+async def validate_local_path(request: LocalPathRequest):
+    """Validate a local submissions folder path and return basic info."""
+    base_path = _resolve_local_path(request.path)
+    if not base_path or not os.path.isdir(base_path):
+        raise HTTPException(status_code=400, detail="Please enter a valid local folder path")
+
+    repo_paths = _collect_repo_paths(base_path)
+    if not repo_paths:
+        raise HTTPException(status_code=400, detail="Please enter a valid local folder path")
+
+    return {
+        "status": "ok",
+        "resolved_path": base_path,
+        "count": len(repo_paths),
+    }
 
 
 

@@ -1,6 +1,7 @@
 import json
 import ast
 import os
+import subprocess
 from typing import Dict, Any, Optional, List
 
 from tools.analysis_tools import (
@@ -14,6 +15,8 @@ from tools.analysis_tools import (
 # ---------------------------------------------------------
 # 1. FILE LOADING TOOLS
 # ---------------------------------------------------------
+
+DEFAULT_EXPECTED_COMMIT_MESSAGE = "hello"
 
 def load_rubric(rubric: Optional[Dict[str, Any]] = None, rubric_path: Optional[str] = None, selected_ids: Optional[List[str]] = None) -> Dict[str, Any]:
     """Load a grading rubric.
@@ -96,6 +99,127 @@ def load_test_cases(test_cases_path: str) -> Optional[List[Dict[str, Any]]]:
         return None
     with open(test_cases_path, "r") as f:
         return json.load(f)
+
+
+def check_commit_messages(
+    repo_path: str,
+    expected_message: Optional[str] = None,
+    expected_messages: Optional[List[str]] = None,
+    match_mode: str = "exact",
+    case_sensitive: bool = False,
+    max_commits: Optional[int] = None,
+) -> Dict[str, Any]:
+    """Check commit messages in a git repository against an expected message.
+
+    Args:
+        repo_path: Path to the student repository.
+        expected_message: The required commit message. If omitted, uses
+            DEFAULT_EXPECTED_COMMIT_MESSAGE.
+        expected_messages: Optional list of acceptable commit messages. If
+            provided, any one match satisfies the requirement.
+        match_mode: "exact" (default) or "contains".
+        case_sensitive: Whether matching is case-sensitive.
+        max_commits: Optional cap on the number of commits to inspect.
+
+    Returns:
+        Dictionary with match summary and any mismatched commits.
+    """
+    if not repo_path or not os.path.isdir(repo_path):
+        return {"error": f"Repository path not found: {repo_path}"}
+
+    expected_list: List[str] = []
+    if expected_messages:
+        expected_list = [m for m in expected_messages if m]
+    elif expected_message is not None:
+        expected_list = [expected_message]
+    else:
+        expected_list = [DEFAULT_EXPECTED_COMMIT_MESSAGE]
+
+    expected_list = [m for m in expected_list if m]
+    if not expected_list:
+        return {"error": "Expected commit message(s) are empty"}
+
+    if match_mode not in {"exact", "contains"}:
+        return {"error": f"Unsupported match_mode: {match_mode}. Use 'exact' or 'contains'."}
+
+    # Build git log command
+    cmd = ["git", "-C", repo_path, "log", "--pretty=%H%x1f%s"]
+    if isinstance(max_commits, int) and max_commits > 0:
+        cmd.insert(4, f"-{max_commits}")
+
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    except subprocess.CalledProcessError as e:
+        return {"error": f"Failed to read git history: {e.stderr.strip() or str(e)}"}
+
+    lines = [line for line in result.stdout.splitlines() if line.strip()]
+    commits = []
+    for line in lines:
+        try:
+            commit_hash, message = line.split("\x1f", 1)
+        except ValueError:
+            continue
+        commits.append({"hash": commit_hash, "message": message})
+
+    if not commits:
+        return {
+            "expected_message": expected,
+            "total_commits": 0,
+            "matching_commits": 0,
+            "mismatches": [],
+            "match_mode": match_mode,
+            "case_sensitive": case_sensitive,
+        }
+
+    def _normalize(s: str) -> str:
+        return s if case_sensitive else s.lower()
+
+    expected_norms = [_normalize(m) for m in expected_list]
+    mismatches = []
+    matching = 0
+    matched_expected: List[str] = []
+    missing_expected: List[str] = []
+
+    # Track which expected messages were found at least once
+    for exp_raw, exp_norm in zip(expected_list, expected_norms):
+        found = False
+        for c in commits:
+            msg_norm = _normalize(c["message"])
+            if match_mode == "exact":
+                if msg_norm == exp_norm:
+                    found = True
+                    break
+            else:
+                if exp_norm in msg_norm:
+                    found = True
+                    break
+        if found:
+            matched_expected.append(exp_raw)
+        else:
+            missing_expected.append(exp_raw)
+
+    for c in commits:
+        msg_norm = _normalize(c["message"])
+        if match_mode == "exact":
+            is_match = any(msg_norm == exp for exp in expected_norms)
+        else:
+            is_match = any(exp in msg_norm for exp in expected_norms)
+
+        if is_match:
+            matching += 1
+        else:
+            mismatches.append(c)
+
+    return {
+        "expected_messages": expected_list,
+        "matched_expected_messages": matched_expected,
+        "missing_expected_messages": missing_expected,
+        "total_commits": len(commits),
+        "matching_commits": matching,
+        "mismatches": mismatches,
+        "match_mode": match_mode,
+        "case_sensitive": case_sensitive,
+    }
 
 
 # ---------------------------------------------------------
@@ -446,6 +570,7 @@ def compute_final_grade(
     documentation: Optional[Dict[str, Any]] = None,
     style: Optional[Dict[str, Any]] = None,
     tests: Optional[Dict[str, Any]] = None,
+    commit_messages: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Combine all partial results into a rubric-based final grade.
@@ -576,6 +701,71 @@ def compute_final_grade(
         }
         results["total_score"] += earned
 
+    # 6. Commit Messages
+    commit_key = "commit messages" if "commit messages" in rubric else "commit_messages"
+    if commit_key in rubric:
+        pts = rubric[commit_key].get("points", rubric[commit_key].get("max_points", 0))
+        results["max_score"] += pts
+
+        if commit_messages:
+            if commit_messages.get("error"):
+                earned = 0
+                feedback = [
+                    "Commit message check failed:",
+                    f"- Error: {commit_messages.get('error')}",
+                ]
+            else:
+                matching = commit_messages.get("matching_commits", 0)
+                total = commit_messages.get("total_commits", 0)
+                expected_list = commit_messages.get("expected_messages", [])
+                matched_expected = commit_messages.get("matched_expected_messages", [])
+                missing_expected = commit_messages.get("missing_expected_messages", [])
+                match_mode = commit_messages.get("match_mode", "exact")
+                case_sensitive = commit_messages.get("case_sensitive", False)
+                mismatches = commit_messages.get("mismatches", [])
+
+                expected_total = len(expected_list)
+                matched_total = len(matched_expected)
+                ratio = (matched_total / expected_total) if expected_total > 0 else 0
+                earned = pts * ratio
+                if matched_total == expected_total and expected_total > 0:
+                    status = "✓ All required commit messages found"
+                elif matched_total > 0:
+                    status = "⚠ Some required commit messages found"
+                else:
+                    status = "✗ Required commit messages not found"
+
+                feedback = [
+                    status,
+                    f"- Expected: {', '.join(expected_list)}",
+                    f"- Matched expected: {matched_total} / {expected_total}",
+                    f"- Match mode: {match_mode}",
+                    f"- Case sensitive: {case_sensitive}",
+                    f"- Matched: {matching} / {total} commits",
+                ]
+
+                if missing_expected:
+                    feedback.append(f"- Missing expected: {', '.join(missing_expected)}")
+
+                if mismatches:
+                    preview = mismatches[:3]
+                    examples = [f"  - {m.get('hash', '')[:7]}: {m.get('message', '')}" for m in preview]
+                    feedback.append("- Examples of non-matching commits:")
+                    feedback.extend(examples)
+        else:
+            earned = 0
+            feedback = [
+                "Commit message check skipped or not run",
+                "- No commit message results were provided",
+            ]
+
+        results["breakdown"][commit_key] = {
+            "earned": earned,
+            "possible": pts,
+            "feedback": feedback,
+        }
+        results["total_score"] += earned
+
     # Recalculate total score from the breakdown to avoid double-counting and keep a single source of truth
     results["total_score"] = 0
     for category in results["breakdown"].values():
@@ -598,7 +788,7 @@ def compute_final_grade(
         summary = f"{title}: No graded items"
 
     # If functionality existed in the rubric but there were no test cases, add a short note
-    if "functionality" in rubric and tests.get("total", 0) == 0:
+    if "functionality" in rubric and tests and tests.get("total", 0) == 0:
         summary += " — Functionality tests were skipped (no test cases provided)."
 
     results["summary"] = summary

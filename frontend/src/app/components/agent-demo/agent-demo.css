@@ -62,6 +62,9 @@ h2 {
 .tools-list.simple-list .tool-item { list-style: none; padding: 10px 0; border-bottom: 1px solid #eef2f5; }
 .tool-name { font-weight: 700; color: #0b2b4a; }
 .tool-desc { color: #556677; margin-top: 4px; }
+.simple-list { list-style: none; padding: 0; margin: 8px 0; }
+.simple-list li { padding: 6px 0; border-bottom: 1px solid #eef2f5; }
+.muted { color: #6b7280; font-size: 0.85rem; }
 
 .task-form {
   background-color: #f8f9fa;
@@ -86,6 +89,37 @@ h2 {
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 14px;
+}
+
+.commit-message-input {
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 6px;
+  background: #f8fafc;
+}
+
+.commit-message-input label {
+  display: block;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 6px;
+}
+
+.commit-message-input textarea {
+  width: 100%;
+  resize: vertical;
+  padding: 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 14px;
+  background: #fff;
+}
+
+.commit-message-input .hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #64748b;
 }
 
 button {
@@ -157,6 +191,13 @@ button:disabled {
 
 .link-button:hover {
   text-decoration: underline;
+}
+
+.local-path-box {
+  margin-top: 10px;
+}
+.local-path-box .upload-button {
+  margin-left: 10px;
 }
 
 /* GRADE CARDS */
