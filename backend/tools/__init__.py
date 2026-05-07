@@ -35,4 +35,7 @@ __all__ = [
 
     # Test-running tool
     "run_pytest_on_directory",
+    
+    "get_git_history",
+    "check_git_history",
 ]
